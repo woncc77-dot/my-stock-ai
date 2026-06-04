@@ -14,6 +14,7 @@ import {
   fetchRecommendations,
   fetchStockAnalysisOnly,
   fetchStockPrices,
+  isProductionApiMisconfigured,
   type PricePoint,
   type Recommendation,
   type TodayIntraday,
@@ -190,6 +191,17 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <TopNav />
+      {isProductionApiMisconfigured() && (
+        <div className="border-b border-accent-magenta/30 bg-accent-magenta/10 px-6 py-4">
+          <p className="type-body-sm font-[540]">
+            Vercel 배포: 백엔드 API URL이 설정되지 않았습니다.
+          </p>
+          <p className="type-caption mt-2 text-ink/70">
+            현재 API 주소: <code>{API_BASE}</code> — Railway/Render에 FastAPI를 배포한 뒤,
+            Vercel 환경변수 <code>NEXT_PUBLIC_API_URL</code>에 그 URL을 넣고 Redeploy 하세요.
+          </p>
+        </div>
+      )}
       <MarqueeStrip onTickerClick={(name) => handleStockPick(name)} />
 
       {/* Hero — white canvas */}
@@ -374,7 +386,13 @@ export default function Home() {
                 <div className="rounded-md border border-hairline bg-canvas p-4 type-body-sm leading-relaxed">
                   {recommendError}
                   <p className="type-caption mt-2 text-ink/60">
-                    백엔드({API_BASE}) 확인
+                    현재 API: {API_BASE}
+                    {API_BASE.includes("localhost") && (
+                      <> · 로컬 백엔드: <code>cd backend && uvicorn main:app --reload</code></>
+                    )}
+                    {!API_BASE.includes("localhost") && (
+                      <> · Vercel/Railway URL이 실제 배포 주소와 일치하는지 확인하세요.</>
+                    )}
                   </p>
                 </div>
               ) : recommendations.length === 0 ? (

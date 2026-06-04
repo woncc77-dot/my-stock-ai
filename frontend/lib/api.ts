@@ -1,6 +1,24 @@
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+/** Vercel 등 프로덕션에서 localhost API URL을 쓰는 경우 */
+export function isProductionApiMisconfigured(): boolean {
+  if (typeof window === "undefined") return false;
+  const onLocalhost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+  if (onLocalhost) return false;
+  return (
+    API_BASE.includes("localhost") ||
+    API_BASE.includes("127.0.0.1") ||
+    API_BASE.includes("xxx.up.railway.app") ||
+    API_BASE.includes("your-app.vercel.app") ||
+    API_BASE.includes("Railway") ||
+    API_BASE.includes("Render") ||
+    !API_BASE.startsWith("http")
+  );
+}
+
 const FETCH_TIMEOUT_MS = 60_000;
 
 let accessTokenProvider: (() => Promise<string | null>) | null = null;
@@ -143,15 +161,28 @@ async function fetchJson<T>(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<
     const res = await fetch(url, { signal: controller.signal, headers });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      const message =
-        body?.detail ?? `요청에 실패했습니다. (${res.status})`;
-      throw new Error(typeof message === "string" ? message : JSON.stringify(message));
+      if (typeof body?.detail === "string") {
+        throw new Error(body.detail);
+      }
+      if (res.status === 404) {
+        throw new Error(
+          `API 주소를 찾을 수 없습니다 (404). 백엔드 URL(${API_BASE})이 맞는지 확인하세요. ` +
+            `로컬: backend 서버 실행 + NEXT_PUBLIC_API_URL=http://localhost:8000 · ` +
+            `Vercel: Railway/Render 배포 URL을 환경변수에 설정해야 합니다.`,
+        );
+      }
+      throw new Error(`요청에 실패했습니다. (${res.status})`);
     }
     return res.json();
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       throw new Error(
         `서버 응답 시간이 초과되었습니다. 백엔드(${API_BASE})를 확인해 주세요.`,
+      );
+    }
+    if (err instanceof TypeError && err.message === "Failed to fetch") {
+      throw new Error(
+        `백엔드(${API_BASE})에 연결할 수 없습니다. 서버가 실행 중인지, URL이 올바른지 확인하세요.`,
       );
     }
     throw err;
