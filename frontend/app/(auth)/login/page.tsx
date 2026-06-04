@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { formatAuthError } from "@/lib/auth-errors";
 
 function LoginForm() {
   const router = useRouter();
@@ -14,9 +15,15 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(
-    authError ? "로그인에 실패했습니다. 다시 시도해 주세요." : null,
-  );
+  const [error, setError] = useState<string | null>(() => {
+    if (authError === "supabase_config") {
+      return "Supabase Project URL이 설정되지 않았습니다. frontend/.env.local의 NEXT_PUBLIC_SUPABASE_URL을 확인해 주세요.";
+    }
+    if (authError) {
+      return "로그인에 실패했습니다. 다시 시도해 주세요.";
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(false);
 
   async function handleEmailLogin(e: FormEvent) {
@@ -25,10 +32,18 @@ function LoginForm() {
     setError(null);
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    let signInError;
+
+    try {
+      ({ error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      }));
+    } catch (err) {
+      setError(formatAuthError(err));
+      setLoading(false);
+      return;
+    }
 
     if (signInError) {
       setError(signInError.message);
