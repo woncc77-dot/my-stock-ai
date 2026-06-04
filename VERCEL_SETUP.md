@@ -8,7 +8,7 @@
 |-----|-------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://fwbjwdlfdstdcnqnrkko.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_5U-D0i4Gev1U-aHe71Gnmg_86kuSd8m` |
-| `NEXT_PUBLIC_API_URL` | Render/Railway 배포 URL (예: `https://my-stock-ai-api.onrender.com`) |
+| `NEXT_PUBLIC_API_URL` | Railway 백엔드 URL (예: `https://my-stock-ai-production.up.railway.app`) |
 
 ## Vercel 프로젝트 설정
 
@@ -22,13 +22,12 @@ Authentication → URL Configuration:
 - Site URL: `https://your-app.vercel.app`
 - Redirect: `https://your-app.vercel.app/auth/callback`
 
-## Render 백엔드 (render.yaml)
+## Railway 백엔드
 
-1. https://dashboard.render.com → New → Blueprint
-2. GitHub `woncc77-dot/my-stock-ai` 연결
-3. 환경변수 입력:
-   - `GEMINI_API_KEY`
-   - `ALLOWED_ORIGINS` = `https://your-app.vercel.app,http://localhost:3000`
-   - `SUPABASE_JWT_SECRET` (Supabase Dashboard → API → JWT Secret)
+상세 절차는 [RAILWAY.md](./RAILWAY.md) 참고.
 
-배포 URL을 `NEXT_PUBLIC_API_URL`에 넣고 Vercel Redeploy.
+1. https://railway.app → GitHub `woncc77-dot/my-stock-ai` 연결
+2. **Root Directory:** `backend`
+3. Variables: `GEMINI_API_KEY`, `ALLOWED_ORIGINS`, `SUPABASE_JWT_SECRET`
+4. **Networking → Generate Domain** → URL 복사
+5. Vercel `NEXT_PUBLIC_API_URL`에 Railway URL 입력 후 **Redeploy**

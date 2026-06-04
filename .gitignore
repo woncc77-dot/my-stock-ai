@@ -21,3 +21,5 @@ frontend/out/
 .DS_Store
 Thumbs.db
 .cursor/
+
+.vercel

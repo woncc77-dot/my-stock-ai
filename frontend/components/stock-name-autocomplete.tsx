@@ -21,6 +21,7 @@ export function StockNameAutocomplete({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const listId = useId();
 
@@ -30,22 +31,30 @@ export function StockNameAutocomplete({
       setSuggestions([]);
       setOpen(false);
       setActiveIndex(-1);
+      setFetchError(null);
       return;
     }
 
     let cancelled = false;
     const timer = setTimeout(async () => {
       setLoading(true);
+      setFetchError(null);
+      setOpen(true);
       try {
         const data = await fetchStockSuggestions(trimmed);
         if (cancelled) return;
         setSuggestions(data.suggestions);
-        setOpen(data.suggestions.length > 0);
+        setOpen(true);
         setActiveIndex(-1);
-      } catch {
+      } catch (err) {
         if (!cancelled) {
           setSuggestions([]);
-          setOpen(false);
+          setOpen(true);
+          setFetchError(
+            err instanceof Error
+              ? err.message
+              : "유사 종목을 불러오지 못했습니다.",
+          );
         }
       } finally {
         if (!cancelled) {
@@ -79,6 +88,7 @@ export function StockNameAutocomplete({
     setOpen(false);
     setSuggestions([]);
     setActiveIndex(-1);
+    setFetchError(null);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -110,7 +120,7 @@ export function StockNameAutocomplete({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onFocus={() => {
-          if (suggestions.length > 0) setOpen(true);
+          if (value.trim().length > 0) setOpen(true);
         }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
@@ -125,10 +135,18 @@ export function StockNameAutocomplete({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-hairline bg-canvas py-1 shadow-lg"
+          className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-hairline bg-canvas py-1 shadow-lg"
         >
-          {loading && suggestions.length === 0 ? (
-            <li className="px-3 py-2 type-caption text-ink/50">검색 중...</li>
+          {loading ? (
+            <li className="px-3 py-2 type-caption text-ink/50">
+              유사 종목 검색 중… (배포 서버는 첫 요청이 30초 걸릴 수 있습니다)
+            </li>
+          ) : fetchError ? (
+            <li className="px-3 py-2 type-caption text-ink/70">{fetchError}</li>
+          ) : suggestions.length === 0 ? (
+            <li className="px-3 py-2 type-caption text-ink/50">
+              일치하는 종목이 없습니다
+            </li>
           ) : (
             suggestions.map((item, index) => (
               <li key={item.code} role="option" aria-selected={index === activeIndex}>

@@ -209,7 +209,7 @@ export async function fetchStockSuggestions(
   const encoded = encodeURIComponent(query.trim());
   return fetchJson(
     `${API_BASE}/api/stock/suggest?q=${encoded}&limit=${limit}`,
-    10_000,
+    60_000,
   );
 }
 
