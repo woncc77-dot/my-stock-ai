@@ -16,7 +16,10 @@ from fastapi import Header, HTTPException
 from jwt import PyJWKClient
 
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
+# 프로젝트 URL은 비밀이 아닌 공개값(프론트 번들/JWKS에 이미 노출)이라 기본값을 둡니다.
+# 환경변수 SUPABASE_URL이 있으면 그 값이 우선합니다.
+_DEFAULT_SUPABASE_URL = "https://fwbjwdlfdstdcnqnrkko.supabase.co"
+SUPABASE_URL = (os.getenv("SUPABASE_URL", "").rstrip("/")) or _DEFAULT_SUPABASE_URL
 ALLOW_DEV_AUTH_BYPASS = os.getenv("ALLOW_DEV_AUTH_BYPASS", "").lower() in {
     "1",
     "true",
