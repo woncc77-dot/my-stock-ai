@@ -11,7 +11,7 @@ import { StockChatPanel } from "@/components/stock-chat-panel";
 import { StockNameAutocomplete } from "@/components/stock-name-autocomplete";
 import { StockPriceChart } from "@/components/stock-price-chart";
 import { TodayIntradayChart } from "@/components/today-intraday-chart";
-import { SectionQuickLinks } from "@/components/section-nav";
+import { SectionQuickLinks, scrollToSection } from "@/components/section-nav";
 import { TopNav } from "@/components/top-nav";
 import { WatchlistBar } from "@/components/watchlist-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -222,6 +222,7 @@ export default function Home() {
     setInputCode(asText(code));
     setInputName(asText(name));
     void runSearch(buildStockQuery(code, name));
+    scrollToSection("price-trend");
   }
 
   return (
@@ -320,7 +321,7 @@ export default function Home() {
           {/* Left column */}
           <div className="min-w-0 space-y-8 sm:space-y-12 lg:col-span-2 lg:space-y-24">
             {/* Lime color block — chart */}
-            <section className="data-card">
+            <section id="price-trend" className="data-card scroll-mt-24">
               <p className="type-eyebrow mb-4">Price Trend</p>
               <h2 className="type-headline mb-2">최근 주가 추이</h2>
               {todayQuote?.date && (
