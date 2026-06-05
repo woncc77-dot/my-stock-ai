@@ -25,6 +25,9 @@ type StockPriceChartProps = {
   periodLabel?: string;
 };
 
+const UP_COLOR = "#e5484d"; // 상승 = 빨강
+const DOWN_COLOR = "#2563eb"; // 하락 = 파랑
+
 function formatPrice(value: number) {
   return `${value.toLocaleString("ko-KR")}원`;
 }
@@ -159,15 +162,21 @@ export function StockPriceChart({
         <div className="flex flex-wrap gap-2">
           {todayChangePct != null && (
             <span
-              className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold ${
-                isTodayUp ? "bg-primary text-on-primary" : "bg-canvas text-ink ring-1 ring-hairline"
+              className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold text-white ${
+                isTodayUp ? "bg-positive" : "bg-negative"
               }`}
             >
               전일비 {isTodayUp ? "▲" : "▼"} {todayChangePct >= 0 ? "+" : ""}
               {todayChangePct.toFixed(2)}%
             </span>
           )}
-          <span className="inline-flex min-h-[36px] items-center rounded-pill bg-canvas px-4 py-1 type-body-sm font-semibold text-ink ring-1 ring-hairline">
+          <span
+            className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold ${
+              isPeriodUp
+                ? "bg-positive/15 text-positive"
+                : "bg-negative/15 text-negative"
+            }`}
+          >
             {periodLabel ?? `${data.length}일`} {isPeriodUp ? "▲" : "▼"}{" "}
             {periodChangePct >= 0 ? "+" : ""}
             {periodChangePct.toFixed(2)}%
@@ -233,8 +242,16 @@ export function StockPriceChart({
           <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#000000" stopOpacity={0.12} />
-                <stop offset="100%" stopColor="#000000" stopOpacity={0} />
+                <stop
+                  offset="0%"
+                  stopColor={isPeriodUp ? UP_COLOR : DOWN_COLOR}
+                  stopOpacity={0.16}
+                />
+                <stop
+                  offset="100%"
+                  stopColor={isPeriodUp ? UP_COLOR : DOWN_COLOR}
+                  stopOpacity={0}
+                />
               </linearGradient>
             </defs>
             <CartesianGrid stroke="#e6e6e6" strokeDasharray="3 3" vertical={false} />
@@ -278,7 +295,7 @@ export function StockPriceChart({
             <Area
               type="monotone"
               dataKey="close"
-              stroke="#000000"
+              stroke={isPeriodUp ? UP_COLOR : DOWN_COLOR}
               strokeWidth={2}
               fill="url(#priceGradient)"
               dot={(props) => {
@@ -291,13 +308,18 @@ export function StockPriceChart({
                     cx={cx}
                     cy={cy}
                     r={5}
-                    fill="#000000"
+                    fill={isPeriodUp ? UP_COLOR : DOWN_COLOR}
                     stroke="#ffffff"
                     strokeWidth={2}
                   />
                 );
               }}
-              activeDot={{ r: 4, fill: "#000000", stroke: "#ffffff", strokeWidth: 2 }}
+              activeDot={{
+                r: 4,
+                fill: isPeriodUp ? UP_COLOR : DOWN_COLOR,
+                stroke: "#ffffff",
+                strokeWidth: 2,
+              }}
             />
           </AreaChart>
         </ResponsiveContainer>

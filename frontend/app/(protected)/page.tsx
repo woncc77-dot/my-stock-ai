@@ -511,7 +511,13 @@ export default function Home() {
                           </div>
                           <div>
                             <dt>20일 수익률</dt>
-                            <dd className="mt-1 type-body-sm font-semibold text-ink">
+                            <dd
+                              className={`mt-1 type-body-sm font-semibold ${
+                                item.return_20d_pct >= 0
+                                  ? "text-positive"
+                                  : "text-negative"
+                              }`}
+                            >
                               {item.return_20d_pct >= 0 ? "+" : ""}
                               {item.return_20d_pct.toFixed(1)}%
                             </dd>

@@ -19,6 +19,9 @@ type TodayIntradayChartProps = {
   stockName?: string;
 };
 
+const UP_COLOR = "#e5484d"; // 상승 = 빨강
+const DOWN_COLOR = "#2563eb"; // 하락 = 파랑
+
 function formatPrice(value: number) {
   return `${value.toLocaleString("ko-KR")}원`;
 }
@@ -68,8 +71,8 @@ export function TodayIntradayChart({
         </div>
         {data.change_pct != null && (
           <span
-            className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold ${
-              isUp ? "bg-primary text-on-primary" : "bg-canvas text-ink ring-1 ring-hairline"
+            className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold text-white ${
+              isUp ? "bg-positive" : "bg-negative"
             }`}
           >
             전일비 {isUp ? "▲" : "▼"} {data.change_pct >= 0 ? "+" : ""}
@@ -142,10 +145,15 @@ export function TodayIntradayChart({
             <Line
               type="monotone"
               dataKey="price"
-              stroke="#000000"
+              stroke={isUp ? UP_COLOR : DOWN_COLOR}
               strokeWidth={2}
               dot={false}
-              activeDot={{ r: 4, fill: "#000000", stroke: "#ffffff", strokeWidth: 2 }}
+              activeDot={{
+                r: 4,
+                fill: isUp ? UP_COLOR : DOWN_COLOR,
+                stroke: "#ffffff",
+                strokeWidth: 2,
+              }}
             />
           </LineChart>
         </ResponsiveContainer>
