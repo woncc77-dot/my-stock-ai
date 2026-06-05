@@ -136,6 +136,21 @@ export type StockSuggestResponse = {
   suggestions: StockSuggestion[];
 };
 
+export type MarketNewsItem = {
+  title: string;
+  url: string;
+  source: string;
+  published_at: string;
+};
+
+export type MarketNewsResponse = {
+  count: number;
+  source: string;
+  source_url: string;
+  cached: boolean;
+  items: MarketNewsItem[];
+};
+
 export function buildStockQuery(code: string, name: string): string {
   const c = code.trim();
   const n = name.trim();
@@ -200,6 +215,10 @@ function stockQueryUrl(query: string, mode: "prices" | "analysis" | "full" = "fu
     return `${API_BASE}/api/stock/analysis?q=${encoded}`;
   }
   return `${API_BASE}/api/stock/${encoded}`;
+}
+
+export async function fetchMarketNews(limit = 8): Promise<MarketNewsResponse> {
+  return fetchJson(`${API_BASE}/api/news/market?limit=${limit}`, 20_000);
 }
 
 export async function fetchStockSuggestions(

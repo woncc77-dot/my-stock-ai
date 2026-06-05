@@ -22,7 +22,9 @@ os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import datetime, timedelta
+from html import unescape
 import re
+import ssl
 from typing import Any
 import urllib.request
 
@@ -55,6 +57,9 @@ BASELINE_VOLUME_DAYS = 20
 MIN_TRADING_DAYS = RECENT_VOLUME_DAYS + BASELINE_VOLUME_DAYS
 RECOMMEND_HISTORY_DAYS = 60  # 기술적 지표 계산용 조회 일수
 RECOMMEND_CACHE_MINUTES = 15
+NEWS_CACHE_MINUTES = 15
+NAVER_FINANCE_BASE = "https://finance.naver.com"
+NAVER_MAIN_NEWS_URL = f"{NAVER_FINANCE_BASE}/news/mainnews.naver"
 
 # 10가지 투자·매매 기법 (기법당 1종목 선정)
 INVESTMENT_STRATEGIES: list[dict[str, str]] = [
@@ -81,6 +86,9 @@ _analysis_cache: dict[str, str] = {}
 # 멀티 전략 추천 결과 캐시
 _recommend_cache: dict[str, Any] | None = None
 _recommend_cache_at: datetime | None = None
+
+_market_news_cache: list[dict[str, str]] | None = None
+_market_news_cache_at: datetime | None = None
 
 
 # ──────────────────────────────────────────────
@@ -1057,6 +1065,74 @@ def _find_volume_surge_stocks() -> list[dict[str, Any]]:
     return _find_expert_recommendations()
 
 
+def _fetch_naver_finance_html(url: str) -> str:
+    """네이버 금융 HTML 페이지를 가져옵니다."""
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
+        return resp.read().decode("euc-kr", errors="replace")
+
+
+def _clean_news_text(raw: str) -> str:
+    text = unescape(raw)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def _fetch_market_news(limit: int = 10) -> tuple[list[dict[str, str]], bool]:
+    """
+    네이버 금융 주요 뉴스 목록을 파싱합니다.
+    Returns: (items, served_from_cache)
+    """
+    global _market_news_cache, _market_news_cache_at
+
+    if (
+        _market_news_cache is not None
+        and _market_news_cache_at is not None
+        and datetime.now() - _market_news_cache_at < timedelta(minutes=NEWS_CACHE_MINUTES)
+    ):
+        return _market_news_cache[:limit], True
+
+    try:
+        html_text = _fetch_naver_finance_html(NAVER_MAIN_NEWS_URL)
+    except Exception:
+        if _market_news_cache:
+            return _market_news_cache[:limit], True
+        return [], False
+
+    items: list[dict[str, str]] = []
+    for part in html_text.split('<dd class="articleSubject"')[1:]:
+        link_match = re.search(r'<a href="([^"]+)"[^>]*>([^<]+)</a>', part)
+        if not link_match:
+            continue
+
+        href = link_match.group(1).strip()
+        title = _clean_news_text(link_match.group(2))
+        if not title:
+            continue
+
+        url_full = href if href.startswith("http") else f"{NAVER_FINANCE_BASE}{href}"
+        press_match = re.search(r'<span class="press">([^<]*)</span>', part)
+        wdate_match = re.search(r'<span class="wdate">([^<]*)</span>', part)
+
+        items.append(
+            {
+                "title": title,
+                "url": url_full,
+                "source": _clean_news_text(press_match.group(1)) if press_match else "",
+                "published_at": _clean_news_text(wdate_match.group(1)) if wdate_match else "",
+            }
+        )
+        if len(items) >= 20:
+            break
+
+    if items:
+        _market_news_cache = items
+        _market_news_cache_at = datetime.now()
+
+    return items[:limit], False
+
+
 # ──────────────────────────────────────────────
 # API 엔드포인트
 # ──────────────────────────────────────────────
@@ -1217,6 +1293,22 @@ def analyze_stock(
     if analysis_error:
         result["analysis_error"] = analysis_error
     return result
+
+
+@app.get("/api/news/market")
+def get_market_news(
+    limit: int = Query(10, ge=1, le=20),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """네이버 금융 시장 주요 뉴스 (제목·링크·언론사·시간)."""
+    items, cached = _fetch_market_news(limit=limit)
+    return {
+        "count": len(items),
+        "source": "네이버 금융",
+        "source_url": NAVER_MAIN_NEWS_URL,
+        "cached": cached,
+        "items": items,
+    }
 
 
 @app.get("/api/recommend")

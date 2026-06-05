@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { MarketNewsStrip } from "@/components/market-news-strip";
 import { MarqueeStrip } from "@/components/marquee-strip";
 import { SiteFooter } from "@/components/site-footer";
 import { StockNameAutocomplete } from "@/components/stock-name-autocomplete";
@@ -204,6 +205,7 @@ export default function Home() {
         </div>
       )}
       <MarqueeStrip onTickerClick={(name) => handleStockPick(name)} />
+      <MarketNewsStrip />
 
       {/* Hero — white canvas */}
       <section className="mx-auto max-w-[1280px] px-6 pb-16 pt-20 lg:px-8 lg:pb-24 lg:pt-28">
