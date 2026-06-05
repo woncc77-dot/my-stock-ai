@@ -28,6 +28,15 @@
   --radius-pill: 50px;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+#stock-analysis,
+#recommendations {
+  scroll-margin-top: 5.5rem;
+}
+
 @theme inline {
   --color-primary: var(--color-primary);
   --color-canvas: var(--color-canvas);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { SectionNavCompact } from "@/components/section-nav";
 import { API_BASE } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
@@ -68,11 +69,7 @@ export function TopNav() {
             원채 주식 AI
           </Link>
         </div>
-        <nav className="hidden items-center gap-6 sm:flex">
-          <span className="type-body-sm text-ink">대시보드</span>
-          <span className="type-body-sm text-ink">종목 분석</span>
-          <span className="type-body-sm text-ink">추천</span>
-        </nav>
+        <SectionNavCompact />
         <div className="flex items-center gap-2">
           {user ? (
             <>

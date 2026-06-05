@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { StockNameAutocomplete } from "@/components/stock-name-autocomplete";
 import { StockPriceChart } from "@/components/stock-price-chart";
 import { TodayIntradayChart } from "@/components/today-intraday-chart";
+import { SectionQuickLinks } from "@/components/section-nav";
 import { TopNav } from "@/components/top-nav";
 import {
   API_BASE,
@@ -217,6 +218,8 @@ export default function Home() {
           전망을 친절한 한국어로 요약해 드립니다.
         </p>
 
+        <SectionQuickLinks />
+
         <form
           onSubmit={handleSearch}
           className="mt-12 flex max-w-3xl flex-col gap-4 sm:flex-row sm:items-end"
@@ -316,7 +319,7 @@ export default function Home() {
             </section>
 
             {/* Lilac color block — AI analysis */}
-            <section className="color-block bg-block-lilac">
+            <section id="stock-analysis" className="color-block bg-block-lilac">
               <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="type-eyebrow mb-4">Gemini AI Report</p>
@@ -363,7 +366,7 @@ export default function Home() {
 
           {/* Right column — coral block */}
           <aside className="lg:col-span-1">
-            <div className="color-block sticky top-20 bg-block-coral lg:top-24">
+            <div id="recommendations" className="color-block sticky top-20 bg-block-coral lg:top-24">
               <p className="type-eyebrow mb-4">Multi-Strategy Screen</p>
               <h2 className="type-headline mb-2">
                 10대 투자기법
