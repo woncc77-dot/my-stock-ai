@@ -209,7 +209,7 @@ export default function SignupPage() {
 
         <p className="type-body-sm mt-8 text-center text-ink/70">
           이미 계정이 있으신가요?{" "}
-          <Link href="/login" className="font-[540] text-ink underline underline-offset-4">
+          <Link href="/login" className="font-semibold text-ink underline underline-offset-4">
             로그인
           </Link>
         </p>

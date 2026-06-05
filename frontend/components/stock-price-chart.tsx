@@ -42,7 +42,7 @@ export function StockPriceChart({
   if (data.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-ink/20 bg-canvas/50 px-4 text-center">
-        <p className="type-body-sm font-[480]">종목을 검색하면 최근 주가 추이가 표시됩니다</p>
+        <p className="type-body-sm font-semibold">종목을 검색하면 최근 주가 추이가 표시됩니다</p>
         <p className="text-sm text-ink/70">예: 005930, 삼성전자, 005930 삼성전자</p>
       </div>
     );
@@ -79,18 +79,18 @@ export function StockPriceChart({
             {stockName ? (
               <>
                 {stockName}{" "}
-                <span className="type-body-sm font-[340] text-ink/60">({stockCode})</span>
+                <span className="type-body-sm font-medium text-ink/60">({stockCode})</span>
               </>
             ) : (
               stockCode
             )}{" "}
-            <span className="font-[340]">{formatPrice(lastClose)}</span>
+            <span className="font-medium">{formatPrice(lastClose)}</span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {todayChangePct != null && (
             <span
-              className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-[480] ${
+              className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold ${
                 isTodayUp ? "bg-primary text-on-primary" : "bg-canvas text-ink ring-1 ring-hairline"
               }`}
             >
@@ -99,7 +99,7 @@ export function StockPriceChart({
             </span>
           )}
           <span
-            className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-[480] ${
+            className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold ${
               isPeriodUp ? "bg-canvas text-ink ring-1 ring-hairline" : "bg-canvas text-ink ring-1 ring-hairline"
             }`}
           >

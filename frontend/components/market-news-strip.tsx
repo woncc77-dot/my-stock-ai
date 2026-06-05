@@ -95,7 +95,7 @@ export function MarketNewsStrip() {
                   rel="noreferrer"
                   className="group flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
-                  <span className="type-body-sm font-[480] leading-snug group-hover:underline">
+                  <span className="type-body-sm font-semibold leading-snug group-hover:underline">
                     {item.title}
                   </span>
                   <span className="flex shrink-0 items-center gap-2 type-caption normal-case tracking-normal text-ink/50">

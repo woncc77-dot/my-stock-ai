@@ -158,7 +158,7 @@ export function StockNameAutocomplete({
                     index === activeIndex ? "bg-ink/5" : ""
                   }`}
                 >
-                  <span className="font-[480]">{item.name}</span>
+                  <span className="font-semibold">{item.name}</span>
                   <span className="type-caption text-ink/50">{item.code}</span>
                 </button>
               </li>

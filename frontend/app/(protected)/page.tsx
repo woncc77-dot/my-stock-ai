@@ -44,7 +44,7 @@ function GeminiLoadingCard() {
         <LoadingSpinner />
       </div>
       <div className="max-w-md space-y-2">
-        <p className="type-headline font-[340]">
+        <p className="type-headline font-medium">
           구글 Gemini가 주가를 열심히 분석하고 있습니다...
         </p>
         <p className="type-body-sm text-ink/80">
@@ -195,7 +195,7 @@ export default function Home() {
       <TopNav />
       {isProductionApiMisconfigured() && (
         <div className="border-b border-accent-magenta/30 bg-accent-magenta/10 px-6 py-4">
-          <p className="type-body-sm font-[540]">
+          <p className="type-body-sm font-semibold">
             Vercel 배포: 백엔드 API URL이 설정되지 않았습니다.
           </p>
           <p className="type-caption mt-2 text-ink/70">
@@ -358,7 +358,7 @@ export default function Home() {
                 </div>
               ) : (
                 <p className="type-body-sm max-w-xl text-ink/80">
-                  종목 검색 후 <strong className="font-[540]">AI 분석 받기</strong> 버튼을
+                  종목 검색 후 <strong className="font-semibold">AI 분석 받기</strong> 버튼을
                   누르면 Gemini가 주가 흐름과 전망을 요약합니다. 무료 API는 하루 약
                   20회까지 사용 가능합니다.
                 </p>
@@ -416,7 +416,7 @@ export default function Home() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <span className="type-caption text-ink/60">#{index + 1}</span>
-                            <p className="type-body-sm mt-1 font-[540]">{item.name}</p>
+                            <p className="type-body-sm mt-1 font-semibold">{item.name}</p>
                             <p className="type-caption mt-0.5 text-ink/50">{item.code}</p>
                           </div>
                           <span className="inline-flex min-h-[28px] max-w-[120px] items-center justify-center rounded-pill bg-primary px-3 type-caption text-on-primary">
@@ -426,26 +426,26 @@ export default function Home() {
                         <dl className="mt-4 grid grid-cols-2 gap-3 type-caption text-ink/70">
                           <div>
                             <dt>기법 점수</dt>
-                            <dd className="mt-1 type-body-sm font-[480] text-ink">
+                            <dd className="mt-1 type-body-sm font-semibold text-ink">
                               {item.score.toFixed(0)}점
                             </dd>
                           </div>
                           <div>
                             <dt>20일 수익률</dt>
-                            <dd className="mt-1 type-body-sm font-[480] text-ink">
+                            <dd className="mt-1 type-body-sm font-semibold text-ink">
                               {item.return_20d_pct >= 0 ? "+" : ""}
                               {item.return_20d_pct.toFixed(1)}%
                             </dd>
                           </div>
                           <div>
                             <dt>RSI(14)</dt>
-                            <dd className="mt-1 type-body-sm font-[480] text-ink">
+                            <dd className="mt-1 type-body-sm font-semibold text-ink">
                               {item.rsi_14.toFixed(0)}
                             </dd>
                           </div>
                           <div>
                             <dt>거래량 배율</dt>
-                            <dd className="mt-1 type-body-sm font-[480] text-ink">
+                            <dd className="mt-1 type-body-sm font-semibold text-ink">
                               ×{item.volume_ratio.toFixed(1)}
                             </dd>
                           </div>

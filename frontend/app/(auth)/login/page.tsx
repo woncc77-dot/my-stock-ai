@@ -144,7 +144,7 @@ function LoginForm() {
 
       <p className="type-body-sm mt-8 text-center text-ink/70">
         계정이 없으신가요?{" "}
-        <Link href="/signup" className="font-[540] text-ink underline underline-offset-4">
+        <Link href="/signup" className="font-semibold text-ink underline underline-offset-4">
           회원가입
         </Link>
       </p>

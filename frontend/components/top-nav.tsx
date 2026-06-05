@@ -65,7 +65,7 @@ export function TopNav() {
     <header className="sticky top-0 z-50 border-b border-hairline bg-canvas">
       <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-6 lg:px-8">
         <div className="flex items-center gap-2">
-          <Link href="/" className="type-body-sm font-[540] tracking-[-0.26px]">
+          <Link href="/" className="type-body-sm font-semibold tracking-[-0.26px]">
             원채 주식 AI
           </Link>
         </div>

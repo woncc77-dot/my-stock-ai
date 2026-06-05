@@ -48,7 +48,7 @@ export function SupabaseConnectionBanner() {
 
   return (
     <div className="border-b border-accent-magenta/30 bg-accent-magenta/10 px-6 py-4">
-      <p className="type-body-sm font-[540] text-ink">
+      <p className="type-body-sm font-semibold text-ink">
         Supabase에 연결할 수 없습니다 (Failed to fetch)
       </p>
       <p className="type-caption mt-2 text-ink/70">

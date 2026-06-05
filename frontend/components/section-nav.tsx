@@ -76,7 +76,7 @@ function SectionNavButton({
         <span className={`flex h-8 w-8 items-center justify-center rounded-md ${iconBg}`}>
           {icon}
         </span>
-        <span className="hidden font-[480] sm:inline">{label}</span>
+        <span className="hidden font-semibold sm:inline">{label}</span>
       </button>
     );
   }
@@ -93,7 +93,7 @@ function SectionNavButton({
         {icon}
       </span>
       <span>
-        <span className="type-body-sm block font-[540]">{label}</span>
+        <span className="type-body-sm block font-semibold">{label}</span>
         {description && (
           <span className="type-caption mt-1 block normal-case tracking-normal text-ink/60">
             {description}

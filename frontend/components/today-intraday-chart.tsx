@@ -36,7 +36,7 @@ export function TodayIntradayChart({
   if (!data || data.points.length === 0) {
     return (
       <div className="flex h-56 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-ink/20 bg-canvas/50 px-4 text-center">
-        <p className="type-body-sm font-[480]">오늘 장중 데이터가 아직 없습니다</p>
+        <p className="type-body-sm font-semibold">오늘 장중 데이터가 아직 없습니다</p>
         <p className="type-caption text-ink/60">장 시작 전이거나 휴장일일 수 있습니다</p>
       </div>
     );
@@ -58,17 +58,17 @@ export function TodayIntradayChart({
             {stockName ? (
               <>
                 {stockName}{" "}
-                <span className="type-body-sm font-[340] text-ink/60">({stockCode})</span>
+                <span className="type-body-sm font-medium text-ink/60">({stockCode})</span>
               </>
             ) : (
               stockCode
             )}{" "}
-            <span className="font-[340]">{formatPrice(data.close)}</span>
+            <span className="font-medium">{formatPrice(data.close)}</span>
           </p>
         </div>
         {data.change_pct != null && (
           <span
-            className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-[480] ${
+            className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold ${
               isUp ? "bg-primary text-on-primary" : "bg-canvas text-ink ring-1 ring-hairline"
             }`}
           >
@@ -81,19 +81,19 @@ export function TodayIntradayChart({
       <dl className="mb-4 grid grid-cols-4 gap-2 type-caption text-ink/70 sm:gap-4">
         <div>
           <dt>시가</dt>
-          <dd className="mt-1 type-body-sm font-[480] text-ink">{formatPrice(data.open)}</dd>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">{formatPrice(data.open)}</dd>
         </div>
         <div>
           <dt>고가</dt>
-          <dd className="mt-1 type-body-sm font-[480] text-ink">{formatPrice(data.high)}</dd>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">{formatPrice(data.high)}</dd>
         </div>
         <div>
           <dt>저가</dt>
-          <dd className="mt-1 type-body-sm font-[480] text-ink">{formatPrice(data.low)}</dd>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">{formatPrice(data.low)}</dd>
         </div>
         <div>
           <dt>현재가</dt>
-          <dd className="mt-1 type-body-sm font-[480] text-ink">{formatPrice(data.close)}</dd>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">{formatPrice(data.close)}</dd>
         </div>
       </dl>
 
