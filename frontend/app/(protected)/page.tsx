@@ -21,12 +21,21 @@ import {
   fetchRecommendations,
   fetchStockPrices,
   isProductionApiMisconfigured,
+  PRICE_PERIODS,
   streamStockAnalysis,
   type PricePoint,
   type Recommendation,
   type TodayIntraday,
   type TodayQuote,
 } from "@/lib/api";
+
+type PriceStats = {
+  period_high?: number | null;
+  period_low?: number | null;
+  per?: number | null;
+  pbr?: number | null;
+  dividend_yield?: number | null;
+};
 
 const asText = (value: string | null | undefined) => value ?? "";
 
@@ -62,6 +71,8 @@ export default function Home() {
   const [analysisUpdatedAt, setAnalysisUpdatedAt] = useState<string | null>(null);
   const [todayQuote, setTodayQuote] = useState<TodayQuote | null>(null);
   const [todayIntraday, setTodayIntraday] = useState<TodayIntraday | null>(null);
+  const [period, setPeriod] = useState<number>(30);
+  const [priceStats, setPriceStats] = useState<PriceStats>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -98,7 +109,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadPrices(query: string) {
+  async function loadPrices(query: string, periodDays: number = period) {
     setIsLoadingPrices(true);
     setStockError(null);
     setAnalysis(null);
@@ -106,7 +117,7 @@ export default function Home() {
     setAnalysisCached(false);
 
     try {
-      const priceData = await fetchStockPrices(query);
+      const priceData = await fetchStockPrices(query, periodDays);
       setActiveCode(asText(priceData.stock_code));
       setActiveName(asText(priceData.stock_name));
       setInputCode(asText(priceData.stock_code));
@@ -114,15 +125,35 @@ export default function Home() {
       setPriceHistory(priceData.price_history);
       setTodayQuote(priceData.today_quote ?? null);
       setTodayIntraday(priceData.today_intraday ?? null);
+      setPriceStats({
+        period_high: priceData.period_high,
+        period_low: priceData.period_low,
+        per: priceData.per,
+        pbr: priceData.pbr,
+        dividend_yield: priceData.dividend_yield,
+      });
     } catch (err) {
       setPriceHistory([]);
       setTodayQuote(null);
       setTodayIntraday(null);
+      setPriceStats({});
       setStockError(
         err instanceof Error ? err.message : "주가 데이터를 불러오지 못했습니다.",
       );
     } finally {
       setIsLoadingPrices(false);
+    }
+  }
+
+  function changePeriod(days: number) {
+    if (days === period) return;
+    setPeriod(days);
+    const query = buildStockQuery(
+      asText(activeCode || inputCode),
+      asText(activeName || inputName),
+    );
+    if (query) {
+      void loadPrices(query, days);
     }
   }
 
@@ -292,10 +323,28 @@ export default function Home() {
               <p className="type-eyebrow mb-4">Price Trend</p>
               <h2 className="type-headline mb-2">최근 주가 추이</h2>
               {todayQuote?.date && (
-                <p className="type-caption mb-6 normal-case tracking-normal text-ink/50">
+                <p className="type-caption mb-4 normal-case tracking-normal text-ink/50">
                   데이터 기준 {todayQuote.date}
                 </p>
               )}
+              <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="조회 기간">
+                {PRICE_PERIODS.map((p) => (
+                  <button
+                    key={p.days}
+                    type="button"
+                    onClick={() => changePeriod(p.days)}
+                    disabled={isLoadingPrices}
+                    aria-pressed={period === p.days}
+                    className={`rounded-pill border px-3 py-1.5 type-caption normal-case tracking-normal transition-colors disabled:opacity-50 ${
+                      period === p.days
+                        ? "border-primary bg-primary text-on-primary"
+                        : "border-hairline bg-canvas text-ink hover:bg-surface-soft"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
               {isLoadingPrices ? (
                 <Skeleton className="h-64 w-full" />
               ) : (
@@ -304,6 +353,14 @@ export default function Home() {
                   stockCode={activeCode || inputCode}
                   stockName={activeName}
                   todayQuote={todayQuote}
+                  periodHigh={priceStats.period_high}
+                  periodLow={priceStats.period_low}
+                  per={priceStats.per}
+                  pbr={priceStats.pbr}
+                  dividendYield={priceStats.dividend_yield}
+                  periodLabel={
+                    PRICE_PERIODS.find((p) => p.days === period)?.label
+                  }
                 />
               )}
             </section>

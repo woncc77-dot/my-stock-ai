@@ -51,6 +51,10 @@ GEMINI_MODEL = "gemini-2.5-flash"
 
 # 주가 조회 기간 (일)
 STOCK_LOOKBACK_DAYS = 30
+# 차트에서 선택 가능한 조회 기간 (일): 30일 / 90일 / 6개월 / 1년
+ALLOWED_PRICE_PERIODS = {30, 90, 180, 365}
+# 재무지표(PER·PBR·배당수익률) 캐시 (분)
+FUNDAMENTALS_CACHE_MINUTES = 30
 
 # 추천 종목 스크리닝 설정
 TOP_MARCAP_COUNT = 120       # 시가총액 상위 N개 종목 스크리닝
@@ -70,6 +74,9 @@ YAHOO_FINANCE_RSS = "https://finance.yahoo.com/news/rssindex"
 MARKET_INDEX_SYMBOLS: list[tuple[str, str, str]] = [
     ("KS11", "KOSPI", "pt"),
     ("KQ11", "KOSDAQ", "pt"),
+    ("DJI", "다우", "pt"),
+    ("IXIC", "나스닥", "pt"),
+    ("US500", "S&P500", "pt"),
     ("USD/KRW", "USD/KRW", "KRW"),
 ]
 
@@ -107,6 +114,9 @@ _global_news_cache_at: datetime | None = None
 
 _market_overview_cache: dict[str, Any] | None = None
 _market_overview_cache_at: datetime | None = None
+
+# 재무지표 캐시 (종목코드 → (지표, 조회시각))
+_fundamentals_cache: dict[str, tuple[dict[str, float | None], datetime]] = {}
 
 
 class ChatMessage(BaseModel):
@@ -365,7 +375,8 @@ def _fetch_stock_prices(stock_code: str, days: int = STOCK_LOOKBACK_DAYS) -> pd.
         Date 인덱스를 가진 pandas DataFrame
     """
     end_date = datetime.today()
-    start_date = end_date - timedelta(days=days * 2)
+    # 주말·공휴일 버퍼를 둬서 요청한 달력 기간을 충분히 덮도록 조회합니다.
+    start_date = end_date - timedelta(days=days + 14)
 
     try:
         df = fdr.DataReader(
@@ -386,7 +397,11 @@ def _fetch_stock_prices(stock_code: str, days: int = STOCK_LOOKBACK_DAYS) -> pd.
         )
 
     df = _merge_today_krx_price(stock_code, df)
-    return df.tail(days)
+
+    # 요청한 달력 기간(days) 안의 거래일만 남깁니다.
+    cutoff = pd.Timestamp((end_date - timedelta(days=days)).date())
+    filtered = df[df.index >= cutoff]
+    return filtered if not filtered.empty else df.tail(1)
 
 
 def _get_krx_row(stock_code: str) -> pd.Series | None:
@@ -662,6 +677,61 @@ def _df_to_price_history(df: pd.DataFrame) -> list[dict[str, Any]]:
             }
         )
     return history
+
+
+def _period_high_low(df: pd.DataFrame) -> tuple[float | None, float | None]:
+    """기간 내 최고가(High 최대)·최저가(Low 최소)를 반환합니다."""
+    if df.empty:
+        return None, None
+    high_col = "High" if "High" in df.columns else "high"
+    low_col = "Low" if "Low" in df.columns else "low"
+    try:
+        return float(df[high_col].max()), float(df[low_col].min())
+    except (KeyError, ValueError, TypeError):
+        return None, None
+
+
+def _fundamental_to_float(value: Any) -> float | None:
+    """'26.59배', '0.51%', '4,580' 같은 문자열을 float으로 변환합니다."""
+    if value is None:
+        return None
+    text = str(value).replace(",", "").replace("%", "").replace("배", "").strip()
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _fetch_stock_fundamentals(stock_code: str) -> dict[str, float | None]:
+    """네이버 금융에서 PER·PBR·배당수익률을 가져옵니다 (실패 시 None)."""
+    now = datetime.now()
+    cached = _fundamentals_cache.get(stock_code)
+    if cached and now - cached[1] < timedelta(minutes=FUNDAMENTALS_CACHE_MINUTES):
+        return cached[0]
+
+    result: dict[str, float | None] = {"per": None, "pbr": None, "dividend_yield": None}
+    try:
+        url = f"https://m.stock.naver.com/api/stock/{stock_code}/integration"
+        raw = _fetch_url_bytes(url, timeout=8)
+        data = json.loads(raw)
+        for item in data.get("totalInfos") or []:
+            code = str(item.get("code", "")).strip()
+            if code == "per":
+                result["per"] = _fundamental_to_float(item.get("value"))
+            elif code == "pbr":
+                result["pbr"] = _fundamental_to_float(item.get("value"))
+            elif code == "dividendYieldRatio":
+                result["dividend_yield"] = _fundamental_to_float(item.get("value"))
+    except Exception:
+        return result
+
+    _fundamentals_cache[stock_code] = (result, now)
+    return result
+
+
+def _normalize_period_days(days: int) -> int:
+    """허용된 조회 기간(30/90/180/365)으로 정규화합니다."""
+    return days if days in ALLOWED_PRICE_PERIODS else STOCK_LOOKBACK_DAYS
 
 
 def _analysis_cache_key(code: str, price_df: pd.DataFrame) -> str:
@@ -1342,17 +1412,27 @@ def root() -> dict[str, str]:
     return {"message": "국내 주식 분석 API 서버가 실행 중입니다.", "docs": "/docs"}
 
 
-def _build_prices_response(stock_query: str) -> dict[str, Any]:
+def _build_prices_response(
+    stock_query: str, days: int = STOCK_LOOKBACK_DAYS
+) -> dict[str, Any]:
     """주가 차트용 데이터만 반환 (Gemini 호출 없음)."""
     code, name = _resolve_stock_query(stock_query)
-    price_df = _fetch_stock_prices(code, days=STOCK_LOOKBACK_DAYS)
+    period = _normalize_period_days(days)
+    price_df = _fetch_stock_prices(code, days=period)
+    high, low = _period_high_low(price_df)
+    fundamentals = _fetch_stock_fundamentals(code)
     return {
         "stock_code": code,
         "stock_name": name,
-        "period_days": len(price_df),
+        "period_days": period,
         "price_history": _df_to_price_history(price_df),
         "today_quote": _build_today_quote(code, price_df),
         "today_intraday": _fetch_today_intraday(code),
+        "period_high": high,
+        "period_low": low,
+        "per": fundamentals["per"],
+        "pbr": fundamentals["pbr"],
+        "dividend_yield": fundamentals["dividend_yield"],
     }
 
 
@@ -1422,10 +1502,11 @@ def get_stock_intraday_query(
 @app.get("/api/stock/prices")
 def get_stock_prices_query(
     q: str = Query(..., min_length=1, description="종목코드, 종목명, 또는 '005930 삼성전자'"),
+    days: int = Query(STOCK_LOOKBACK_DAYS, description="조회 기간(일): 30 / 90 / 180 / 365"),
     _user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """주가 차트용 데이터 (쿼리 파라미터 — 종목명 검색에 권장)."""
-    return _build_prices_response(q)
+    return _build_prices_response(q, days=days)
 
 
 @app.get("/api/stock/analysis")
@@ -1512,10 +1593,11 @@ def stock_chat(
 @app.get("/api/stock/{stock_query}/prices")
 def get_stock_prices(
     stock_query: str,
+    days: int = Query(STOCK_LOOKBACK_DAYS, description="조회 기간(일): 30 / 90 / 180 / 365"),
     _user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """주가 차트용 데이터 (경로 파라미터)."""
-    return _build_prices_response(stock_query)
+    return _build_prices_response(stock_query, days=days)
 
 
 @app.get("/api/stock/{stock_query}/analysis")

@@ -75,7 +75,24 @@ export type StockPricesResponse = {
   price_history: PricePoint[];
   today_quote?: TodayQuote | null;
   today_intraday?: TodayIntraday | null;
+  period_high?: number | null;
+  period_low?: number | null;
+  per?: number | null;
+  pbr?: number | null;
+  dividend_yield?: number | null;
 };
+
+export type PricePeriod = {
+  days: number;
+  label: string;
+};
+
+export const PRICE_PERIODS: PricePeriod[] = [
+  { days: 30, label: "30일" },
+  { days: 90, label: "90일" },
+  { days: 180, label: "6개월" },
+  { days: 365, label: "1년" },
+];
 
 export type StockAnalysisOnlyResponse = {
   stock_code: string;
@@ -418,8 +435,15 @@ export async function fetchStockSuggestions(
   );
 }
 
-export async function fetchStockPrices(stockQuery: string): Promise<StockPricesResponse> {
-  return fetchJson(stockQueryUrl(stockQuery, "prices"), 30_000);
+export async function fetchStockPrices(
+  stockQuery: string,
+  days = 30,
+): Promise<StockPricesResponse> {
+  const encoded = encodeURIComponent(stockQuery.trim());
+  return fetchJson(
+    `${API_BASE}/api/stock/prices?q=${encoded}&days=${days}`,
+    30_000,
+  );
 }
 
 export async function fetchStockAnalysisOnly(

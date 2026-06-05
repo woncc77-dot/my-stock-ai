@@ -17,10 +17,73 @@ type StockPriceChartProps = {
   stockCode: string;
   stockName?: string;
   todayQuote?: TodayQuote | null;
+  periodHigh?: number | null;
+  periodLow?: number | null;
+  per?: number | null;
+  pbr?: number | null;
+  dividendYield?: number | null;
+  periodLabel?: string;
 };
 
 function formatPrice(value: number) {
   return `${value.toLocaleString("ko-KR")}원`;
+}
+
+function formatMetric(value: number | null | undefined, suffix: string) {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `${value.toFixed(2)}${suffix}`;
+}
+
+function buildComment(params: {
+  periodLabel: string;
+  periodChangePct: number;
+  isPeriodUp: boolean;
+  lastClose: number;
+  periodHigh?: number | null;
+  periodLow?: number | null;
+  per?: number | null;
+  pbr?: number | null;
+  dividendYield?: number | null;
+  todayChangePct?: number | null;
+}): string {
+  const {
+    periodLabel,
+    periodChangePct,
+    isPeriodUp,
+    lastClose,
+    periodHigh,
+    periodLow,
+    per,
+    pbr,
+    dividendYield,
+    todayChangePct,
+  } = params;
+
+  const sign = periodChangePct >= 0 ? "+" : "";
+  let line1 = `최근 ${periodLabel} 동안 ${isPeriodUp ? "상승" : "하락"} 흐름으로 ${sign}${periodChangePct.toFixed(1)}% 변동했습니다.`;
+  if (periodHigh != null && periodLow != null && periodHigh > 0 && periodLow > 0) {
+    const fromHigh = ((lastClose - periodHigh) / periodHigh) * 100;
+    const fromLow = ((lastClose - periodLow) / periodLow) * 100;
+    line1 = `최근 ${periodLabel} ${isPeriodUp ? "상승" : "하락"} 흐름(${sign}${periodChangePct.toFixed(1)}%), 현재가는 기간 최고가 대비 ${fromHigh.toFixed(1)}% · 최저가 대비 +${fromLow.toFixed(1)}% 위치입니다.`;
+  }
+
+  const valBits: string[] = [];
+  if (per != null) valBits.push(`PER ${per.toFixed(2)}배`);
+  if (pbr != null) valBits.push(`PBR ${pbr.toFixed(2)}배`);
+  if (dividendYield != null) valBits.push(`배당수익률 ${dividendYield.toFixed(2)}%`);
+
+  let line2: string;
+  if (valBits.length > 0) {
+    const todayPart =
+      todayChangePct != null
+        ? ` 전일 대비 ${todayChangePct >= 0 ? "강세" : "약세"}(${todayChangePct >= 0 ? "+" : ""}${todayChangePct.toFixed(2)}%)입니다.`
+        : "";
+    line2 = `밸류에이션은 ${valBits.join(" · ")} 수준입니다.${todayPart}`;
+  } else {
+    line2 = "PER·PBR·배당수익률 정보를 불러오지 못했습니다. 차트와 등락률을 참고하세요.";
+  }
+
+  return `${line1} ${line2}`;
 }
 
 function formatDateLabel(date: string) {
@@ -38,6 +101,12 @@ export function StockPriceChart({
   stockCode,
   stockName,
   todayQuote,
+  periodHigh,
+  periodLow,
+  per,
+  pbr,
+  dividendYield,
+  periodLabel,
 }: StockPriceChartProps) {
   if (data.length === 0) {
     return (
@@ -98,15 +167,65 @@ export function StockPriceChart({
               {todayChangePct.toFixed(2)}%
             </span>
           )}
-          <span
-            className={`inline-flex min-h-[36px] items-center rounded-pill px-4 py-1 type-body-sm font-semibold ${
-              isPeriodUp ? "bg-canvas text-ink ring-1 ring-hairline" : "bg-canvas text-ink ring-1 ring-hairline"
-            }`}
-          >
-            {data.length}일 {isPeriodUp ? "▲" : "▼"} {periodChangePct >= 0 ? "+" : ""}
+          <span className="inline-flex min-h-[36px] items-center rounded-pill bg-canvas px-4 py-1 type-body-sm font-semibold text-ink ring-1 ring-hairline">
+            {periodLabel ?? `${data.length}일`} {isPeriodUp ? "▲" : "▼"}{" "}
+            {periodChangePct >= 0 ? "+" : ""}
             {periodChangePct.toFixed(2)}%
           </span>
         </div>
+      </div>
+
+      <dl className="mb-4 grid grid-cols-2 gap-2 type-caption text-ink/70 sm:grid-cols-5 sm:gap-3">
+        <div>
+          <dt>PER</dt>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">
+            {formatMetric(per, "배")}
+          </dd>
+        </div>
+        <div>
+          <dt>PBR</dt>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">
+            {formatMetric(pbr, "배")}
+          </dd>
+        </div>
+        <div>
+          <dt>배당수익률</dt>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">
+            {formatMetric(dividendYield, "%")}
+          </dd>
+        </div>
+        <div>
+          <dt>기간 최고</dt>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">
+            {periodHigh != null ? formatPrice(periodHigh) : "—"}
+          </dd>
+        </div>
+        <div>
+          <dt>기간 최저</dt>
+          <dd className="mt-1 type-body-sm font-semibold text-ink">
+            {periodLow != null ? formatPrice(periodLow) : "—"}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mb-6 rounded-md border border-hairline bg-surface-soft px-4 py-3">
+        <p className="type-caption mb-1 normal-case tracking-normal text-ink/50">
+          분석 코멘트
+        </p>
+        <p className="type-body-sm line-clamp-2 leading-relaxed text-ink/80">
+          {buildComment({
+            periodLabel: periodLabel ?? `${data.length}일`,
+            periodChangePct,
+            isPeriodUp,
+            lastClose,
+            periodHigh,
+            periodLow,
+            per,
+            pbr,
+            dividendYield,
+            todayChangePct,
+          })}
+        </p>
       </div>
 
       <div className="h-64 w-full min-w-0 overflow-hidden rounded-md bg-canvas/60 p-1 sm:h-72 sm:p-2">
