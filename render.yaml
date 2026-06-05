@@ -11,6 +11,10 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
-      # 필수: 미설정 시 백엔드가 모든 인증 요청을 503으로 거부합니다(fail-closed).
+      # 인증: 아래 둘 중 하나 이상 필수(미설정 시 모든 인증 요청을 503으로 거부, fail-closed).
+      # 최신(ES256/RS256 서명키) 프로젝트는 SUPABASE_URL 사용(JWKS 공개키 검증).
+      - key: SUPABASE_URL
+        sync: false
+      # 레거시(HS256 공유 시크릿) 프로젝트는 SUPABASE_JWT_SECRET 사용.
       - key: SUPABASE_JWT_SECRET
         sync: false
