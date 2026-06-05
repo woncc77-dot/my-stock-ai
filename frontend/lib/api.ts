@@ -156,8 +156,8 @@ export type MarketQuote = {
   symbol: string;
   label: string;
   value: number;
-  change: number;
-  change_pct: number;
+  change: number | null;
+  change_pct: number | null;
   date: string;
   unit: string;
 };

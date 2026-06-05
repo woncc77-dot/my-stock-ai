@@ -15,7 +15,9 @@ function formatValue(quote: MarketQuote) {
 }
 
 function QuoteItem({ quote }: { quote: MarketQuote }) {
-  const positive = quote.change_pct >= 0;
+  const hasChange = quote.change_pct != null;
+  const positive = (quote.change_pct ?? 0) >= 0;
+
   return (
     <div className="flex min-w-[140px] shrink-0 items-center gap-3 border-r border-hairline pr-4 last:border-r-0">
       <div>
@@ -26,10 +28,14 @@ function QuoteItem({ quote }: { quote: MarketQuote }) {
           {formatValue(quote)}
         </p>
       </div>
-      <Badge variant={positive ? "positive" : "negative"}>
-        {positive ? "+" : ""}
-        {quote.change_pct.toFixed(2)}%
-      </Badge>
+      {hasChange ? (
+        <Badge variant={positive ? "positive" : "negative"}>
+          {positive ? "+" : ""}
+          {quote.change_pct!.toFixed(2)}%
+        </Badge>
+      ) : (
+        <Badge variant="secondary">—</Badge>
+      )}
     </div>
   );
 }
