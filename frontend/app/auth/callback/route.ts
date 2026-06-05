@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { safeRelativePath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const path = next.startsWith("/") ? next : "/";
+      const path = safeRelativePath(next);
       return NextResponse.redirect(`${origin}${path}`);
     }
   }

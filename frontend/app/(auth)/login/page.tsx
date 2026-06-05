@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatAuthError } from "@/lib/auth-errors";
+import { safeRelativePath } from "@/lib/safe-redirect";
 
 function authErrorFromParam(value: string | null): string | null {
   if (value === "supabase_config") {
@@ -27,7 +28,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setRedirect(params.get("redirect") ?? "/");
+    setRedirect(safeRelativePath(params.get("redirect")));
     setError(authErrorFromParam(params.get("error")));
   }, []);
 

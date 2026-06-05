@@ -38,10 +38,13 @@ Railway → 서비스 → **Variables** 탭:
 Vercel → **Settings → Environment Variables**:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://fwbjwdlfdstdcnqnrkko.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_5U-D0i4Gev1U-aHe71Gnmg_86kuSd8m
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
 NEXT_PUBLIC_API_URL=https://your-url.up.railway.app
 ```
+
+> 실제 Supabase URL/키는 Dashboard → Project Settings → API 에서 확인하세요.
+> 키를 문서에 커밋하지 마세요.
 
 - Vercel **Root Directory:** `frontend`
 - 저장 후 **Redeploy**

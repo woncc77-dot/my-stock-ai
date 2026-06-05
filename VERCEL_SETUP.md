@@ -1,13 +1,16 @@
 # Vercel 환경변수 (Settings → Environment Variables)
 
-아래 값을 **그대로 복사**하세요. 설명 문구를 Value에 넣지 마세요.
+아래 값을 본인 Supabase 프로젝트 값으로 채워 넣으세요. 실제 키를 이 문서에 커밋하지 마세요.
+
+> 값 확인 위치: Supabase Dashboard → Project Settings → API
+> (Project URL, anon/publishable key)
 
 ## 필수 3개
 
 | Key | Value |
 |-----|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://fwbjwdlfdstdcnqnrkko.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_5U-D0i4Gev1U-aHe71Gnmg_86kuSd8m` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://<your-project-ref>.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `<your-supabase-anon-key>` |
 | `NEXT_PUBLIC_API_URL` | Railway 백엔드 URL (예: `https://my-stock-ai-production.up.railway.app`) |
 
 ## Vercel 프로젝트 설정

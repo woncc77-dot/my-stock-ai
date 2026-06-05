@@ -11,5 +11,6 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
+      # 필수: 미설정 시 백엔드가 모든 인증 요청을 503으로 거부합니다(fail-closed).
       - key: SUPABASE_JWT_SECRET
         sync: false
