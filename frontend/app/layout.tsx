@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -8,6 +8,12 @@ export const metadata: Metadata = {
   description: "Gemini AI 기반 국내 주식 분석 대시보드",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -15,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="h-full antialiased" suppressHydrationWarning>
-      <body className="min-h-full flex flex-col bg-canvas font-sans text-ink">
+      <body className="min-h-full flex flex-col overflow-x-hidden bg-canvas font-sans text-ink">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

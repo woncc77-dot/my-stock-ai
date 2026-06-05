@@ -93,14 +93,14 @@ export function WatchlistBar({
 
   return (
     <section className="border-b border-hairline bg-canvas" aria-label="관심종목">
-      <div className="mx-auto max-w-[1280px] px-6 py-3 lg:px-8">
+      <div className="mx-auto max-w-[1280px] page-shell py-3 lg:px-8">
         <Card className="border-hairline bg-surface-soft shadow-none">
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex-col items-stretch gap-3 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">관심종목</CardTitle>
             <button
               type="button"
               onClick={() => void addCurrent()}
-              className="inline-flex items-center gap-1 rounded-pill border border-hairline bg-canvas px-3 py-1.5 type-caption normal-case tracking-normal hover:bg-surface-soft"
+              className="inline-flex w-full items-center justify-center gap-1 rounded-pill border border-hairline bg-canvas px-3 py-1.5 type-caption normal-case tracking-normal hover:bg-surface-soft sm:w-auto"
             >
               <Star className="h-3.5 w-3.5" />
               현재 종목 추가

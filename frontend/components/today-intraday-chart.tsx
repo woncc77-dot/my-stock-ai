@@ -45,16 +45,16 @@ export function TodayIntradayChart({
   const isUp = (data.change_pct ?? 0) >= 0;
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="min-w-0">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6 sm:gap-4">
+        <div className="min-w-0">
           <p className="type-caption mb-2">
             {data.is_today ? "오늘 장중" : "최근 거래일"} · {formatDateLabel(data.date)}
             <span className="ml-2 rounded-pill bg-canvas px-2 py-0.5 ring-1 ring-hairline">
               1분봉
             </span>
           </p>
-          <p className="type-headline">
+          <p className="type-headline break-words">
             {stockName ? (
               <>
                 {stockName}{" "}
@@ -78,7 +78,7 @@ export function TodayIntradayChart({
         )}
       </div>
 
-      <dl className="mb-4 grid grid-cols-4 gap-2 type-caption text-ink/70 sm:gap-4">
+      <dl className="mb-4 grid grid-cols-2 gap-2 type-caption text-ink/70 sm:grid-cols-4 sm:gap-4">
         <div>
           <dt>시가</dt>
           <dd className="mt-1 type-body-sm font-semibold text-ink">{formatPrice(data.open)}</dd>
@@ -97,8 +97,8 @@ export function TodayIntradayChart({
         </div>
       </dl>
 
-      <div className="h-64 w-full rounded-md bg-canvas/60 p-2">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-56 w-full min-w-0 overflow-hidden rounded-md bg-canvas/60 p-1 sm:h-64 sm:p-2">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart data={data.points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="#e6e6e6" strokeDasharray="3 3" vertical={false} />
             <XAxis
@@ -115,7 +115,7 @@ export function TodayIntradayChart({
               tick={{ fill: "#000000", fontSize: 11, fontWeight: 330 }}
               axisLine={false}
               tickLine={false}
-              width={48}
+              width={40}
             />
             <Tooltip
               contentStyle={{

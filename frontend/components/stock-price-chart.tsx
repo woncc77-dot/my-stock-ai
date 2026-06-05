@@ -63,9 +63,9 @@ export function StockPriceChart({
   const isTodayUp = todayChangePct == null ? isPeriodUp : todayChangePct >= 0;
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="min-w-0">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6 sm:gap-4">
+        <div className="min-w-0">
           <p className="type-caption mb-2">
             {displayQuote.is_today ? "오늘 종가" : "최신 종가"} ·{" "}
             {formatTodayLabel(displayQuote.date)}
@@ -75,7 +75,7 @@ export function StockPriceChart({
               </span>
             )}
           </p>
-          <p className="type-headline">
+          <p className="type-headline break-words">
             {stockName ? (
               <>
                 {stockName}{" "}
@@ -109,8 +109,8 @@ export function StockPriceChart({
         </div>
       </div>
 
-      <div className="h-72 w-full rounded-md bg-canvas/60 p-2">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-64 w-full min-w-0 overflow-hidden rounded-md bg-canvas/60 p-1 sm:h-72 sm:p-2">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
@@ -133,7 +133,7 @@ export function StockPriceChart({
               tick={{ fill: "#000000", fontSize: 12, fontWeight: 330 }}
               axisLine={false}
               tickLine={false}
-              width={48}
+              width={40}
             />
             <Tooltip
               contentStyle={{

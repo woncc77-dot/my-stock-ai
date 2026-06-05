@@ -64,41 +64,48 @@ export function TopNav() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-hairline bg-canvas">
-      <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-6 lg:px-8">
-        <div className="flex items-center gap-2">
-          <Link href="/" className="type-body-sm font-semibold tracking-[-0.26px]">
-            원채 주식 AI
-          </Link>
-        </div>
-        <SectionNavCompact />
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          {user ? (
-            <>
-              <span className="type-caption hidden text-ink/70 sm:inline">
-                {user.displayName}
-              </span>
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                className="btn-secondary px-4 py-2 text-base"
-              >
-                로그아웃
-              </button>
-            </>
-          ) : (
-            <Link href="/login" className="btn-primary px-4 py-2 text-base">
-              로그인
-            </Link>
-          )}
-          <a
-            href={`${API_BASE}/docs`}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-secondary hidden px-4 py-2 text-base sm:inline-flex"
+      <div className="mx-auto max-w-[1280px] page-shell lg:px-8">
+        <div className="flex h-14 items-center justify-between gap-1 sm:gap-2">
+          <Link
+            href="/"
+            className="type-caption shrink-0 font-semibold tracking-[-0.26px] sm:type-body-sm"
           >
-            API
-          </a>
+            <span className="sm:hidden">주식 AI</span>
+            <span className="hidden sm:inline">원채 주식 AI</span>
+          </Link>
+          <SectionNavCompact />
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <ThemeToggle />
+            {user ? (
+              <>
+                <span className="type-caption hidden max-w-[72px] truncate text-ink/70 md:inline">
+                  {user.displayName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className="btn-secondary btn-compact sm:min-h-[44px] sm:px-4 sm:py-2 sm:text-base"
+                >
+                  로그아웃
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="btn-primary btn-compact sm:min-h-[44px] sm:px-4 sm:py-2 sm:text-base"
+              >
+                로그인
+              </Link>
+            )}
+            <a
+              href={`${API_BASE}/docs`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary btn-compact hidden sm:inline-flex sm:min-h-[44px] sm:px-4 sm:py-2 sm:text-base"
+            >
+              API
+            </a>
+          </div>
         </div>
       </div>
     </header>

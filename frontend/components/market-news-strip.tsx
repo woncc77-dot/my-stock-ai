@@ -109,7 +109,7 @@ function NewsPanel({ region }: { region: "domestic" | "global" }) {
 export function MarketNewsStrip() {
   return (
     <section className="border-b border-hairline bg-surface-soft" aria-label="시장 뉴스">
-      <div className="mx-auto max-w-[1280px] px-6 py-4 lg:px-8">
+      <div className="mx-auto max-w-[1280px] page-shell py-4 lg:px-8">
         <Card className="border-hairline bg-canvas shadow-none">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Market News</CardTitle>

@@ -1,30 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 import { formatAuthError } from "@/lib/auth-errors";
 
-function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/";
-  const authError = searchParams.get("error");
+function authErrorFromParam(value: string | null): string | null {
+  if (value === "supabase_config") {
+    return "Supabase Project URL이 설정되지 않았습니다. frontend/.env.local의 NEXT_PUBLIC_SUPABASE_URL을 확인해 주세요.";
+  }
+  if (value) {
+    return "로그인에 실패했습니다. 다시 시도해 주세요.";
+  }
+  return null;
+}
 
+export default function LoginPage() {
+  const router = useRouter();
+  const [redirect, setRedirect] = useState("/");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(() => {
-    if (authError === "supabase_config") {
-      return "Supabase Project URL이 설정되지 않았습니다. frontend/.env.local의 NEXT_PUBLIC_SUPABASE_URL을 확인해 주세요.";
-    }
-    if (authError) {
-      return "로그인에 실패했습니다. 다시 시도해 주세요.";
-    }
-    return null;
-  });
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setRedirect(params.get("redirect") ?? "/");
+    setError(authErrorFromParam(params.get("error")));
+  }, []);
 
   async function handleEmailLogin(e: FormEvent) {
     e.preventDefault();
@@ -74,90 +79,82 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md">
-      <p className="type-eyebrow mb-4">원채 주식 AI</p>
-      <h1 className="type-headline mb-2">로그인</h1>
-      <p className="type-body-sm mb-8 text-ink/70">
-        이메일 또는 Google 계정으로 로그인하세요.
-      </p>
+    <div className="flex min-h-screen items-center justify-center bg-canvas page-shell py-12 sm:py-16">
+      <div className="mx-auto w-full max-w-md">
+        <p className="type-eyebrow mb-4">원채 주식 AI</p>
+        <h1 className="type-headline mb-2">로그인</h1>
+        <p className="type-body-sm mb-8 text-ink/70">
+          이메일 또는 Google 계정으로 로그인하세요.
+        </p>
 
-      <button
-        type="button"
-        onClick={() => void handleGoogleLogin()}
-        disabled={loading}
-        className="btn-secondary mb-6 w-full justify-center py-3"
-      >
-        Google로 계속하기
-      </button>
-
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-hairline" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-canvas px-3 type-caption text-ink/50">또는</span>
-        </div>
-      </div>
-
-      <form onSubmit={handleEmailLogin} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="type-caption mb-2 block">
-            이메일
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="text-input"
-            placeholder="you@example.com"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="type-caption mb-2 block">
-            비밀번호
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="text-input"
-            placeholder="••••••••"
-          />
-        </div>
-
-        {error && (
-          <p className="type-body-sm text-ink underline decoration-accent-magenta decoration-2 underline-offset-4">
-            {error}
-          </p>
-        )}
-
-        <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-          {loading ? "로그인 중..." : "로그인"}
+        <button
+          type="button"
+          onClick={() => void handleGoogleLogin()}
+          disabled={loading}
+          className="btn-secondary mb-6 w-full justify-center py-3"
+        >
+          Google로 계속하기
         </button>
-      </form>
 
-      <p className="type-body-sm mt-8 text-center text-ink/70">
-        계정이 없으신가요?{" "}
-        <Link href="/signup" className="font-semibold text-ink underline underline-offset-4">
-          회원가입
-        </Link>
-      </p>
-    </div>
-  );
-}
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-hairline" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className="bg-canvas px-3 type-caption text-ink/50">또는</span>
+          </div>
+        </div>
 
-export default function LoginPage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-6 py-16">
-      <Suspense fallback={<p className="type-body-sm">로딩 중...</p>}>
-        <LoginForm />
-      </Suspense>
+        <form onSubmit={handleEmailLogin} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="type-caption mb-2 block">
+              이메일
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="text-input"
+              placeholder="you@example.com"
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="type-caption mb-2 block">
+              비밀번호
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="text-input"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && (
+            <p className="type-body-sm text-ink underline decoration-accent-magenta decoration-2 underline-offset-4">
+              {error}
+            </p>
+          )}
+
+          <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+            {loading ? "로그인 중..." : "로그인"}
+          </button>
+        </form>
+
+        <p className="type-body-sm mt-8 text-center text-ink/70">
+          계정이 없으신가요?{" "}
+          <Link href="/signup" className="font-semibold text-ink underline underline-offset-4">
+            회원가입
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

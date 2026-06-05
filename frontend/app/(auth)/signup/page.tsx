@@ -101,7 +101,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-6 py-16">
+    <div className="flex min-h-screen items-center justify-center bg-canvas page-shell py-12 sm:py-16">
       <div className="mx-auto w-full max-w-md">
         <p className="type-eyebrow mb-4">원채 주식 AI</p>
         <h1 className="type-headline mb-2">회원가입</h1>

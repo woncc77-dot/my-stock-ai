@@ -193,10 +193,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="min-h-screen overflow-x-hidden bg-canvas text-ink">
       <TopNav />
       {isProductionApiMisconfigured() && (
-        <div className="border-b border-accent-magenta/30 bg-accent-magenta/10 px-6 py-4">
+        <div className="border-b border-accent-magenta/30 bg-accent-magenta/10 page-shell py-4">
           <p className="type-body-sm font-semibold">
             Vercel 배포: 백엔드 API URL이 설정되지 않았습니다.
           </p>
@@ -216,7 +216,7 @@ export default function Home() {
       <MarketNewsStrip />
 
       {/* Hero — white canvas */}
-      <section className="mx-auto max-w-[1280px] px-6 pb-16 pt-20 lg:px-8 lg:pb-24 lg:pt-28">
+      <section className="mx-auto max-w-[1280px] page-shell pb-12 pt-12 sm:pb-16 sm:pt-16 lg:px-8 lg:pb-24 lg:pt-28">
         <p className="type-eyebrow mb-6">국내 주식 · Gemini AI</p>
         <h1 className="type-display-lg max-w-4xl text-ink">
           원채 주식 AI
@@ -283,10 +283,10 @@ export default function Home() {
         )}
       </section>
 
-      <div className="mx-auto max-w-[1280px] px-6 lg:px-8">
-        <div className="grid gap-12 pb-24 lg:grid-cols-3 lg:gap-8">
+      <div className="mx-auto max-w-[1280px] page-shell lg:px-8">
+        <div className="grid min-w-0 gap-8 pb-16 sm:gap-12 sm:pb-24 lg:grid-cols-3 lg:gap-8">
           {/* Left column */}
-          <div className="space-y-12 lg:col-span-2 lg:space-y-24">
+          <div className="min-w-0 space-y-8 sm:space-y-12 lg:col-span-2 lg:space-y-24">
             {/* Lime color block — chart */}
             <section className="data-card">
               <p className="type-eyebrow mb-4">Price Trend</p>
@@ -392,8 +392,8 @@ export default function Home() {
           </div>
 
           {/* Right column — coral block */}
-          <aside className="lg:col-span-1">
-            <Card id="recommendations" className="sticky top-20 border-hairline shadow-none lg:top-24">
+          <aside className="min-w-0 lg:col-span-1">
+            <Card id="recommendations" className="border-hairline shadow-none lg:sticky lg:top-24">
               <CardHeader>
                 <p className="type-eyebrow mb-2">Multi-Strategy Screen</p>
                 <CardTitle>10대 투자기법 종목 추천</CardTitle>
@@ -441,7 +441,7 @@ export default function Home() {
                             <p className="type-body-sm mt-1 font-semibold">{item.name}</p>
                             <p className="type-caption mt-0.5 text-ink/50">{item.code}</p>
                           </div>
-                          <span className="inline-flex min-h-[28px] max-w-[120px] items-center justify-center rounded-pill bg-primary px-3 type-caption text-on-primary">
+                          <span className="inline-flex min-h-[28px] max-w-[96px] shrink-0 items-center justify-center truncate rounded-pill bg-primary px-2 type-caption text-on-primary sm:max-w-[120px] sm:px-3">
                             {item.strategy_name}
                           </span>
                         </div>
@@ -490,7 +490,7 @@ export default function Home() {
         </div>
 
         {/* Navy promo block */}
-        <section className="color-block mb-24 bg-block-navy text-inverse-ink">
+        <section className="color-block mb-16 sm:mb-24 bg-block-navy text-inverse-ink">
           <div className="max-w-2xl">
             <p className="type-eyebrow mb-4 text-inverse-ink/70">Powered by</p>
             <h2 className="type-headline mb-4 text-inverse-ink">

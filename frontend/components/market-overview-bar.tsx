@@ -19,7 +19,7 @@ function QuoteItem({ quote }: { quote: MarketQuote }) {
   const positive = (quote.change_pct ?? 0) >= 0;
 
   return (
-    <div className="flex min-w-[140px] shrink-0 items-center gap-3 border-r border-hairline pr-4 last:border-r-0">
+    <div className="flex min-w-[120px] shrink-0 items-center gap-2 border-r border-hairline pr-3 last:border-r-0 sm:min-w-[140px] sm:gap-3 sm:pr-4">
       <div>
         <p className="type-caption normal-case tracking-normal text-ink/50">
           {quote.label}
@@ -78,7 +78,7 @@ export function MarketOverviewBar() {
       className="border-b border-hairline bg-canvas"
       aria-label="시장 지표"
     >
-      <div className="mx-auto max-w-[1280px] px-6 py-3 lg:px-8">
+      <div className="mx-auto max-w-[1280px] page-shell py-3 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="type-eyebrow text-ink/60">Market Overview</p>
           {updatedAt && (

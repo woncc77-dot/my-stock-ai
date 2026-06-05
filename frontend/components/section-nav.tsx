@@ -70,10 +70,10 @@ function SectionNavButton({
       <button
         type="button"
         onClick={() => scrollToSection(sectionId)}
-        className="inline-flex items-center gap-2 rounded-pill px-3 py-2 type-body-sm transition-colors hover:bg-surface-soft"
+        className="inline-flex items-center gap-1 rounded-pill px-1.5 py-1 type-body-sm transition-colors hover:bg-surface-soft sm:gap-2 sm:px-3 sm:py-2"
         aria-label={label}
       >
-        <span className={`flex h-8 w-8 items-center justify-center rounded-md ${iconBg}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-md sm:h-8 sm:w-8 ${iconBg}`}>
           {icon}
         </span>
         <span className="hidden font-semibold sm:inline">{label}</span>
@@ -85,7 +85,7 @@ function SectionNavButton({
     <button
       type="button"
       onClick={() => scrollToSection(sectionId)}
-      className="flex min-w-[140px] flex-1 items-center gap-4 rounded-lg border border-hairline bg-surface-soft px-5 py-4 text-left transition-colors hover:border-primary sm:max-w-[240px] sm:flex-none"
+      className="flex w-full items-center gap-3 rounded-lg border border-hairline bg-surface-soft px-4 py-3 text-left transition-colors hover:border-primary sm:min-w-[140px] sm:max-w-[240px] sm:flex-none sm:gap-4 sm:px-5 sm:py-4"
     >
       <span
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-md ${iconBg}`}
@@ -106,7 +106,7 @@ function SectionNavButton({
 
 export function SectionQuickLinks() {
   return (
-    <div className="mt-10 flex flex-wrap gap-4">
+    <div className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:gap-4">
       <SectionNavButton
         target="analysis"
         label="종목 분석"
@@ -127,7 +127,7 @@ export function SectionQuickLinks() {
 
 export function SectionNavCompact() {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex min-w-0 shrink items-center gap-0.5 sm:gap-1">
       <SectionNavButton
         target="analysis"
         label="종목 분석"

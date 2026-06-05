@@ -1,6 +1,6 @@
 export function SiteFooter() {
   return (
-    <footer className="mt-24 border-t border-hairline bg-canvas px-6 py-24 lg:px-8">
+    <footer className="mt-16 border-t border-hairline bg-canvas page-shell py-16 sm:mt-24 sm:py-24 lg:px-8">
       <div className="mx-auto max-w-[1280px]">
         <p className="type-display-lg mb-12 max-w-md">Stock AI</p>
         <div className="grid gap-8 sm:grid-cols-3">

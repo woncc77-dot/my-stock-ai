@@ -115,18 +115,18 @@ export function StockChatPanel({
 
         {error && <p className="type-body-sm text-negative">{error}</p>}
 
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={disabled ? "종목을 먼저 검색하세요" : "질문 입력..."}
             disabled={disabled || loading || !stockQuery}
-            className="text-input flex-1"
+            className="text-input min-w-0 flex-1"
           />
           <button
             type="submit"
             disabled={disabled || loading || !stockQuery || !input.trim()}
-            className="btn-primary px-4"
+            className="btn-primary shrink-0 px-4 sm:w-auto"
             aria-label="전송"
           >
             <Send className="h-4 w-4" />
