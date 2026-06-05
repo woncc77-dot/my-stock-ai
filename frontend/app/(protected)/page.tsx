@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { MarketNewsStrip } from "@/components/market-news-strip";
+import { ThemeBoard } from "@/components/theme-board";
 import { MarketOverviewBar } from "@/components/market-overview-bar";
 import { MarqueeStrip } from "@/components/marquee-strip";
 import { SiteFooter } from "@/components/site-footer";
@@ -551,6 +552,15 @@ export default function Home() {
             </Card>
           </aside>
         </div>
+
+        {/* Theme board */}
+        <section id="themes" className="mb-16 scroll-mt-24 sm:mb-24">
+          <h2 className="type-subhead mb-1 text-ink">테마별 시세</h2>
+          <p className="type-body-sm mb-6 text-ink/60">
+            오늘 강세를 보이는 테마와 주도주를 확인하세요.
+          </p>
+          <ThemeBoard onSelect={handleStockPick} />
+        </section>
 
         {/* Navy promo block */}
         <section className="color-block mb-16 sm:mb-24 bg-block-navy text-inverse-ink">

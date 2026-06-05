@@ -69,7 +69,9 @@ NEWS_CACHE_MINUTES = 15
 OVERVIEW_CACHE_MINUTES = 5
 NAVER_FINANCE_BASE = "https://finance.naver.com"
 NAVER_MAIN_NEWS_URL = f"{NAVER_FINANCE_BASE}/news/mainnews.naver"
+NAVER_THEME_URL = f"{NAVER_FINANCE_BASE}/sise/theme.naver"
 YAHOO_FINANCE_RSS = "https://finance.yahoo.com/news/rssindex"
+THEMES_CACHE_MINUTES = 15
 
 MARKET_INDEX_SYMBOLS: list[tuple[str, str, str]] = [
     ("KS11", "KOSPI", "pt"),
@@ -117,6 +119,10 @@ _market_overview_cache_at: datetime | None = None
 
 # 재무지표 캐시 (종목코드 → (지표, 조회시각))
 _fundamentals_cache: dict[str, tuple[dict[str, float | None], datetime]] = {}
+
+# 테마별 시세 캐시
+_themes_cache: dict[str, Any] | None = None
+_themes_cache_at: datetime | None = None
 
 
 class ChatMessage(BaseModel):
@@ -1279,6 +1285,128 @@ def _fetch_market_overview() -> tuple[dict[str, Any], bool]:
     return payload, False
 
 
+_THEME_ANCHOR_RE = re.compile(
+    r'sise_group_detail\.naver\?type=theme&no=(\d+)">([^<]+)</a>'
+)
+_THEME_CHANGE_RE = re.compile(
+    r'col_type2">.*?<span[^>]*>\s*([+\-]?[\d,.]+)%', re.S
+)
+_THEME_COUNT_RE = re.compile(r'col_type4">(\d+)</td>')
+_THEME_LEADER_RE = re.compile(r'item/main\.naver\?code=(\d{6})">([^<]+)</a>')
+
+
+def _leader_change_pct(code: str) -> float | None:
+    """KRX 목록에서 종목 전일대비 등락률(ChagesRatio)을 가져옵니다."""
+    row = _get_krx_row(code)
+    if row is None:
+        return None
+    try:
+        ratio = row.get("ChagesRatio")
+        if ratio is None or pd.isna(ratio):
+            return None
+        return round(float(ratio), 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_theme_html(html: str) -> list[dict[str, Any]]:
+    """네이버 테마 목록 HTML에서 테마 행을 파싱합니다."""
+    matches = list(_THEME_ANCHOR_RE.finditer(html))
+    themes: list[dict[str, Any]] = []
+
+    for i, match in enumerate(matches):
+        start = match.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else start + 1500
+        block = html[start:end]
+
+        no = match.group(1)
+        name = match.group(2).strip()
+
+        change_match = _THEME_CHANGE_RE.search(block)
+        change_pct: float | None = None
+        if change_match:
+            try:
+                change_pct = float(change_match.group(1).replace(",", ""))
+            except ValueError:
+                change_pct = None
+
+        counts = _THEME_COUNT_RE.findall(block)
+        rising = int(counts[0]) if len(counts) > 0 else 0
+        flat = int(counts[1]) if len(counts) > 1 else 0
+        falling = int(counts[2]) if len(counts) > 2 else 0
+
+        leaders: list[dict[str, Any]] = []
+        for code, leader_name in _THEME_LEADER_RE.findall(block)[:3]:
+            leaders.append(
+                {
+                    "code": code,
+                    "name": leader_name.strip(),
+                    "change_pct": _leader_change_pct(code),
+                }
+            )
+
+        themes.append(
+            {
+                "no": no,
+                "name": name,
+                "change_pct": change_pct,
+                "rising": rising,
+                "flat": flat,
+                "falling": falling,
+                "stock_count": rising + flat + falling,
+                "leaders": leaders,
+            }
+        )
+
+    return themes
+
+
+def _fetch_stock_themes(limit: int = 12) -> dict[str, Any]:
+    """네이버 금융 테마별 시세를 등락률 내림차순으로 가져옵니다."""
+    global _themes_cache, _themes_cache_at
+
+    if (
+        _themes_cache is not None
+        and _themes_cache_at is not None
+        and datetime.now() - _themes_cache_at < timedelta(minutes=THEMES_CACHE_MINUTES)
+    ):
+        return {**_themes_cache, "themes": _themes_cache["themes"][:limit], "cached": True}
+
+    try:
+        url = f"{NAVER_THEME_URL}?field=change_rate&ordering=desc&page=1"
+        raw = _fetch_url_bytes(url, timeout=12)
+        html = raw.decode("euc-kr", "ignore")
+        themes = _parse_theme_html(html)
+    except Exception:
+        if _themes_cache is not None:
+            return {**_themes_cache, "themes": _themes_cache["themes"][:limit], "cached": True}
+        return {
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "cached": False,
+            "source": "네이버 금융",
+            "source_url": NAVER_THEME_URL,
+            "themes": [],
+        }
+
+    themes.sort(
+        key=lambda t: t["change_pct"] if t["change_pct"] is not None else -999,
+        reverse=True,
+    )
+
+    payload = {
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "cached": False,
+        "source": "네이버 금융",
+        "source_url": NAVER_THEME_URL,
+        "themes": themes,
+    }
+    if themes:
+        _themes_cache = payload
+        _themes_cache_at = datetime.now()
+
+    return {**payload, "themes": themes[:limit]}
+
+
 def _fetch_url_bytes(url: str, timeout: int = 15) -> bytes:
     ctx = ssl.create_default_context(cafile=certifi.where())
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -1655,6 +1783,15 @@ def get_market_overview(
     """KOSPI·KOSDAQ·USD/KRW 등 시장 지표 요약."""
     payload, cached = _fetch_market_overview()
     return {**payload, "cached": cached}
+
+
+@app.get("/api/themes")
+def get_stock_themes(
+    limit: int = Query(12, ge=1, le=30),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """네이버 금융 테마별 시세(등락률 내림차순)."""
+    return _fetch_stock_themes(limit=limit)
 
 
 @app.get("/api/news/market")

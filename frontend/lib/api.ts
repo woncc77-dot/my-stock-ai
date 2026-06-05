@@ -185,6 +185,31 @@ export type MarketOverviewResponse = {
   quotes: MarketQuote[];
 };
 
+export type ThemeLeader = {
+  code: string;
+  name: string;
+  change_pct: number | null;
+};
+
+export type StockTheme = {
+  no: string;
+  name: string;
+  change_pct: number | null;
+  rising: number;
+  falling: number;
+  flat: number;
+  stock_count: number;
+  leaders: ThemeLeader[];
+};
+
+export type ThemesResponse = {
+  updated_at: string;
+  cached: boolean;
+  source: string;
+  source_url: string;
+  themes: StockTheme[];
+};
+
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -363,6 +388,10 @@ function stockQueryUrl(query: string, mode: "prices" | "analysis" | "full" = "fu
 
 export async function fetchMarketOverview(): Promise<MarketOverviewResponse> {
   return fetchJson(`${API_BASE}/api/market/overview`, 20_000);
+}
+
+export async function fetchThemes(limit = 12): Promise<ThemesResponse> {
+  return fetchJson(`${API_BASE}/api/themes?limit=${limit}`, 20_000);
 }
 
 export async function fetchMarketNews(

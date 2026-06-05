@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 export const SECTION_IDS = {
   analysis: "stock-analysis",
   recommend: "recommendations",
+  themes: "themes",
 } as const;
 
 export function scrollToSection(id: string) {
@@ -25,6 +26,26 @@ export function AnalysisIcon({ className = "h-5 w-5" }: { className?: string }) 
     >
       <path d="M3 3v18h18" />
       <path d="m19 9-5 5-4-4-3 3" />
+    </svg>
+  );
+}
+
+export function ThemeIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   );
 }
@@ -120,6 +141,13 @@ export function SectionQuickLinks() {
         description="10대 투자기법 스크리닝"
         icon={<RecommendIcon className="h-6 w-6" />}
         iconBg="bg-block-coral"
+      />
+      <SectionNavButton
+        target="themes"
+        label="테마"
+        description="테마별 시세·주도주"
+        icon={<ThemeIcon className="h-6 w-6" />}
+        iconBg="bg-block-mint"
       />
     </div>
   );
