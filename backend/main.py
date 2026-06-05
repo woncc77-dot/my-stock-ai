@@ -23,16 +23,20 @@ os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import datetime, timedelta
 from html import unescape
+import json
 import re
 import ssl
 from typing import Any
 import urllib.request
+import xml.etree.ElementTree as ET
 
 import FinanceDataReader as fdr
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from google import genai
+from pydantic import BaseModel, Field
 
 from auth import get_current_user
 
@@ -58,8 +62,16 @@ MIN_TRADING_DAYS = RECENT_VOLUME_DAYS + BASELINE_VOLUME_DAYS
 RECOMMEND_HISTORY_DAYS = 60  # 기술적 지표 계산용 조회 일수
 RECOMMEND_CACHE_MINUTES = 15
 NEWS_CACHE_MINUTES = 15
+OVERVIEW_CACHE_MINUTES = 5
 NAVER_FINANCE_BASE = "https://finance.naver.com"
 NAVER_MAIN_NEWS_URL = f"{NAVER_FINANCE_BASE}/news/mainnews.naver"
+YAHOO_FINANCE_RSS = "https://finance.yahoo.com/news/rssindex"
+
+MARKET_INDEX_SYMBOLS: list[tuple[str, str, str]] = [
+    ("KS11", "KOSPI", "pt"),
+    ("KQ11", "KOSDAQ", "pt"),
+    ("USD/KRW", "USD/KRW", "KRW"),
+]
 
 # 10가지 투자·매매 기법 (기법당 1종목 선정)
 INVESTMENT_STRATEGIES: list[dict[str, str]] = [
@@ -89,6 +101,22 @@ _recommend_cache_at: datetime | None = None
 
 _market_news_cache: list[dict[str, str]] | None = None
 _market_news_cache_at: datetime | None = None
+
+_global_news_cache: list[dict[str, str]] | None = None
+_global_news_cache_at: datetime | None = None
+
+_market_overview_cache: dict[str, Any] | None = None
+_market_overview_cache_at: datetime | None = None
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class StockChatRequest(BaseModel):
+    stock_query: str = Field(..., min_length=1)
+    messages: list[ChatMessage] = Field(default_factory=list)
 
 
 # ──────────────────────────────────────────────
@@ -661,13 +689,7 @@ def _ask_gemini_for_analysis(price_text: str) -> str:
     """
     가공된 주가 텍스트를 Gemini API에 보내고, 한국어 분석 결과를 받아옵니다.
     """
-    prompt = f"""아래는 국내 주식의 최근 일별 주가 데이터입니다.
-
-{price_text}
-
-이 데이터를 바탕으로 주식의 최근 단기 흐름, 앞으로의 전망, 투자할 때 조심해야 할 유의점을 친절한 한국어로 요약해줘.
-
-※ 투자 조언이 아닌 참고용 정보임을 마지막에 한 줄로 안내해 줘."""
+    prompt = _analysis_prompt(price_text)
 
     try:
         future = _gemini_executor.submit(_call_gemini_api, prompt)
@@ -1133,6 +1155,183 @@ def _fetch_market_news(limit: int = 10) -> tuple[list[dict[str, str]], bool]:
     return items[:limit], False
 
 
+def _quote_from_fdr(symbol: str, label: str, unit: str = "") -> dict[str, Any] | None:
+    """FinanceDataReader로 지수·환율 최신 시세와 전일 대비를 반환합니다."""
+    try:
+        end = datetime.today()
+        start = end - timedelta(days=14)
+        df = fdr.DataReader(symbol, start, end)
+        if df is None or len(df) < 2:
+            return None
+        close_col = "Close" if "Close" in df.columns else "close"
+        last = float(df[close_col].iloc[-1])
+        prev = float(df[close_col].iloc[-2])
+        change = last - prev
+        change_pct = (change / prev * 100) if prev else 0.0
+        return {
+            "symbol": symbol,
+            "label": label,
+            "value": round(last, 2),
+            "change": round(change, 2),
+            "change_pct": round(change_pct, 2),
+            "date": df.index[-1].strftime("%Y-%m-%d"),
+            "unit": unit,
+        }
+    except Exception:
+        return None
+
+
+def _fetch_market_overview() -> tuple[dict[str, Any], bool]:
+    global _market_overview_cache, _market_overview_cache_at
+
+    if (
+        _market_overview_cache is not None
+        and _market_overview_cache_at is not None
+        and datetime.now() - _market_overview_cache_at < timedelta(minutes=OVERVIEW_CACHE_MINUTES)
+    ):
+        return _market_overview_cache, True
+
+    quotes: list[dict[str, Any]] = []
+    for symbol, label, unit in MARKET_INDEX_SYMBOLS:
+        quote = _quote_from_fdr(symbol, label, unit)
+        if quote:
+            quotes.append(quote)
+
+    payload = {
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "quotes": quotes,
+    }
+    if quotes:
+        _market_overview_cache = payload
+        _market_overview_cache_at = datetime.now()
+    elif _market_overview_cache:
+        return _market_overview_cache, True
+    return payload, False
+
+
+def _fetch_url_bytes(url: str, timeout: int = 15) -> bytes:
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+        return resp.read()
+
+
+def _fetch_global_news(limit: int = 10) -> tuple[list[dict[str, str]], bool]:
+    """Yahoo Finance RSS에서 해외 금융 헤드라인을 수집합니다."""
+    global _global_news_cache, _global_news_cache_at
+
+    if (
+        _global_news_cache is not None
+        and _global_news_cache_at is not None
+        and datetime.now() - _global_news_cache_at < timedelta(minutes=NEWS_CACHE_MINUTES)
+    ):
+        return _global_news_cache[:limit], True
+
+    try:
+        raw = _fetch_url_bytes(YAHOO_FINANCE_RSS)
+        root = ET.fromstring(raw)
+    except Exception:
+        if _global_news_cache:
+            return _global_news_cache[:limit], True
+        return [], False
+
+    items: list[dict[str, str]] = []
+    for item in root.findall(".//item")[:limit]:
+        title_el = item.find("title")
+        link_el = item.find("link")
+        pub_el = item.find("pubDate")
+        if title_el is None or link_el is None or not title_el.text:
+            continue
+        title = _clean_news_text(title_el.text)
+        url = link_el.text.strip() if link_el.text else ""
+        if not title or not url:
+            continue
+        items.append(
+            {
+                "title": title,
+                "url": url,
+                "source": "Yahoo Finance",
+                "published_at": _clean_news_text(pub_el.text) if pub_el is not None and pub_el.text else "",
+            }
+        )
+
+    if items:
+        _global_news_cache = items
+        _global_news_cache_at = datetime.now()
+    return items[:limit], False
+
+
+def _analysis_prompt(price_text: str) -> str:
+    return f"""아래는 국내 주식의 최근 일별 주가 데이터입니다.
+
+{price_text}
+
+이 데이터를 바탕으로 주식의 최근 단기 흐름, 앞으로의 전망, 투자할 때 조심해야 할 유의점을 친절한 한국어로 요약해줘.
+
+※ 투자 조언이 아닌 참고용 정보임을 마지막에 한 줄로 안내해 줘."""
+
+
+def _handle_gemini_exception(exc: Exception) -> HTTPException:
+    err_msg = str(exc)
+    if "401" in err_msg or "UNAUTHENTICATED" in err_msg:
+        return HTTPException(
+            status_code=401,
+            detail=(
+                "Gemini API 키가 올바르지 않습니다. "
+                "backend/.env 파일에 AIzaSy... 형식의 키를 입력해 주세요."
+            ),
+        )
+    if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower():
+        return HTTPException(
+            status_code=429,
+            detail="Gemini API 무료 사용량을 초과했습니다. 잠시 후 다시 시도해 주세요.",
+        )
+    return HTTPException(status_code=502, detail=f"Gemini API 호출 중 오류: {exc}")
+
+
+def _stream_gemini_text(prompt: str):
+    client = _get_gemini_client()
+    for chunk in client.models.generate_content_stream(
+        model=GEMINI_MODEL,
+        contents=prompt,
+    ):
+        text = getattr(chunk, "text", None)
+        if text:
+            yield text
+
+
+def _build_stock_chat_context(stock_query: str) -> tuple[str, str, str]:
+    code, name = _resolve_stock_query(stock_query)
+    price_df = _fetch_stock_prices(code, days=STOCK_LOOKBACK_DAYS)
+    price_text = _format_price_data_for_ai(code, price_df, stock_name=name)
+    hist_df = _fetch_stock_prices(code, days=RECOMMEND_HISTORY_DAYS)
+    indicators = _compute_stock_indicators(hist_df)
+    indicator_text = ""
+    if indicators:
+        indicator_text = (
+            f"현재가 {indicators['close']:.0f}, RSI(14) {indicators['rsi']:.1f}, "
+            f"MA20 {indicators['ma20']:.0f}, 20일 수익률 {indicators.get('ret_20d', 0):.1f}%"
+        )
+    return code, name, f"{price_text}\n\n[기술적 지표]\n{indicator_text}"
+
+
+def _build_chat_prompt(context: str, stock_name: str, messages: list[ChatMessage]) -> str:
+    history = "\n".join(
+        f"{m.role.upper()}: {m.content}" for m in messages[-8:]
+    )
+    return f"""당신은 국내 주식 리서치 Copilot입니다. 아래 종목 데이터를 바탕으로 한국어로 답변하세요.
+투자 권유는 하지 말고, 참고용 정보만 제공하세요.
+
+[종목] {stock_name}
+[데이터]
+{context}
+
+[대화]
+{history}
+
+USER의 마지막 질문에 간결하고 명확하게 답변하세요."""
+
+
 # ──────────────────────────────────────────────
 # API 엔드포인트
 # ──────────────────────────────────────────────
@@ -1238,6 +1437,78 @@ def get_stock_analysis_query(
     return _build_analysis_response(q)
 
 
+@app.get("/api/stock/analysis/stream")
+def stream_stock_analysis(
+    q: str = Query(..., min_length=1),
+    _user: dict = Depends(get_current_user),
+) -> StreamingResponse:
+    """Gemini 주가 분석 스트리밍 (SSE)."""
+    code, name = _resolve_stock_query(q)
+    price_df = _fetch_stock_prices(code, days=STOCK_LOOKBACK_DAYS)
+    cache_key = _analysis_cache_key(code, price_df)
+    price_text = _format_price_data_for_ai(code, price_df, stock_name=name)
+    prompt = _analysis_prompt(price_text)
+
+    def event_generator():
+        meta = {"stock_code": code, "stock_name": name}
+        yield f"data: {json.dumps({'meta': meta})}\n\n"
+        try:
+            if cache_key in _analysis_cache:
+                cached_text = _analysis_cache[cache_key]
+                yield f"data: {json.dumps({'text': cached_text, 'cached': True})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
+            parts: list[str] = []
+            for piece in _stream_gemini_text(prompt):
+                parts.append(piece)
+                yield f"data: {json.dumps({'text': piece})}\n\n"
+            full = "".join(parts).strip()
+            if full:
+                _analysis_cache[cache_key] = full
+            yield "data: [DONE]\n\n"
+        except Exception as exc:
+            http_exc = _handle_gemini_exception(exc)
+            yield f"data: {json.dumps({'error': http_exc.detail})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/api/stock/chat")
+def stock_chat(
+    body: StockChatRequest,
+    _user: dict = Depends(get_current_user),
+) -> StreamingResponse:
+    """종목 컨텍스트 기반 AI Copilot 채팅 (SSE)."""
+    if not body.messages:
+        raise HTTPException(status_code=400, detail="messages가 비어 있습니다.")
+
+    _code, name, context = _build_stock_chat_context(body.stock_query)
+    prompt = _build_chat_prompt(context, name, body.messages)
+
+    def event_generator():
+        yield f"data: {json.dumps({'meta': {'stock_name': name}})}\n\n"
+        try:
+            for piece in _stream_gemini_text(prompt):
+                yield f"data: {json.dumps({'text': piece})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as exc:
+            http_exc = _handle_gemini_exception(exc)
+            yield f"data: {json.dumps({'error': http_exc.detail})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.get("/api/stock/{stock_query}/prices")
 def get_stock_prices(
     stock_query: str,
@@ -1295,15 +1566,36 @@ def analyze_stock(
     return result
 
 
+@app.get("/api/market/overview")
+def get_market_overview(
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """KOSPI·KOSDAQ·USD/KRW 등 시장 지표 요약."""
+    payload, cached = _fetch_market_overview()
+    return {**payload, "cached": cached}
+
+
 @app.get("/api/news/market")
 def get_market_news(
     limit: int = Query(10, ge=1, le=20),
+    region: str = Query("domestic", pattern="^(domestic|global)$"),
     _user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """네이버 금융 시장 주요 뉴스 (제목·링크·언론사·시간)."""
+    """시장 뉴스 — domestic(네이버) 또는 global(Yahoo RSS)."""
+    if region == "global":
+        items, cached = _fetch_global_news(limit=limit)
+        return {
+            "count": len(items),
+            "region": "global",
+            "source": "Yahoo Finance",
+            "source_url": YAHOO_FINANCE_RSS,
+            "cached": cached,
+            "items": items,
+        }
     items, cached = _fetch_market_news(limit=limit)
     return {
         "count": len(items),
+        "region": "domestic",
         "source": "네이버 금융",
         "source_url": NAVER_MAIN_NEWS_URL,
         "cached": cached,

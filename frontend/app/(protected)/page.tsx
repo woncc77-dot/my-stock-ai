@@ -3,20 +3,25 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { MarketNewsStrip } from "@/components/market-news-strip";
+import { MarketOverviewBar } from "@/components/market-overview-bar";
 import { MarqueeStrip } from "@/components/marquee-strip";
 import { SiteFooter } from "@/components/site-footer";
+import { StockChatPanel } from "@/components/stock-chat-panel";
 import { StockNameAutocomplete } from "@/components/stock-name-autocomplete";
 import { StockPriceChart } from "@/components/stock-price-chart";
 import { TodayIntradayChart } from "@/components/today-intraday-chart";
 import { SectionQuickLinks } from "@/components/section-nav";
 import { TopNav } from "@/components/top-nav";
+import { WatchlistBar } from "@/components/watchlist-bar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   API_BASE,
   buildStockQuery,
   fetchRecommendations,
-  fetchStockAnalysisOnly,
   fetchStockPrices,
   isProductionApiMisconfigured,
+  streamStockAnalysis,
   type PricePoint,
   type Recommendation,
   type TodayIntraday,
@@ -37,24 +42,6 @@ function LoadingSpinner({ dark = false }: { dark?: boolean }) {
   );
 }
 
-function GeminiLoadingCard() {
-  return (
-    <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-canvas">
-        <LoadingSpinner />
-      </div>
-      <div className="max-w-md space-y-2">
-        <p className="type-headline font-medium">
-          구글 Gemini가 주가를 열심히 분석하고 있습니다...
-        </p>
-        <p className="type-body-sm text-ink/80">
-          최근 30일 데이터를 바탕으로 단기 흐름과 전망을 정리 중이에요.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const [inputCode, setInputCode] = useState("");
   const [inputName, setInputName] = useState("");
@@ -72,6 +59,7 @@ export default function Home() {
   const [isLoadingRecommend, setIsLoadingRecommend] = useState(true);
   const [recommendError, setRecommendError] = useState<string | null>(null);
   const [analysisCached, setAnalysisCached] = useState(false);
+  const [analysisUpdatedAt, setAnalysisUpdatedAt] = useState<string | null>(null);
   const [todayQuote, setTodayQuote] = useState<TodayQuote | null>(null);
   const [todayIntraday, setTodayIntraday] = useState<TodayIntraday | null>(null);
 
@@ -149,17 +137,31 @@ export default function Home() {
     }
 
     setIsLoadingAnalysis(true);
-    setAnalysis(null);
+    setAnalysis("");
     setAnalysisError(null);
     setAnalysisCached(false);
+    setAnalysisUpdatedAt(null);
 
     try {
-      const analysisData = await fetchStockAnalysisOnly(query);
-      setActiveCode(asText(analysisData.stock_code));
-      setActiveName(asText(analysisData.stock_name));
-      setAnalysis(analysisData.analysis);
-      setAnalysisError(analysisData.analysis_error ?? null);
-      setAnalysisCached(Boolean(analysisData.cached));
+      await streamStockAnalysis(query, {
+        onMeta: (meta) => {
+          if (meta.stock_code) setActiveCode(meta.stock_code);
+          if (meta.stock_name) setActiveName(meta.stock_name);
+        },
+        onCached: () => setAnalysisCached(true),
+        onChunk: (text) => {
+          setAnalysis((prev) => `${prev ?? ""}${text}`);
+        },
+        onError: (message) => setAnalysisError(message),
+      });
+      setAnalysisUpdatedAt(
+        new Date().toLocaleString("ko-KR", {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
     } catch (err) {
       setAnalysis(null);
       setAnalysisError(
@@ -204,7 +206,13 @@ export default function Home() {
           </p>
         </div>
       )}
+      <MarketOverviewBar />
       <MarqueeStrip onTickerClick={(name) => handleStockPick(name)} />
+      <WatchlistBar
+        activeCode={activeCode || inputCode}
+        activeName={activeName || inputName}
+        onSelect={handleStockPick}
+      />
       <MarketNewsStrip />
 
       {/* Hero — white canvas */}
@@ -280,16 +288,16 @@ export default function Home() {
           {/* Left column */}
           <div className="space-y-12 lg:col-span-2 lg:space-y-24">
             {/* Lime color block — chart */}
-            <section className="color-block bg-block-lime">
+            <section className="data-card">
               <p className="type-eyebrow mb-4">Price Trend</p>
-              <h2 className="type-headline mb-8">최근 주가 추이</h2>
+              <h2 className="type-headline mb-2">최근 주가 추이</h2>
+              {todayQuote?.date && (
+                <p className="type-caption mb-6 normal-case tracking-normal text-ink/50">
+                  데이터 기준 {todayQuote.date}
+                </p>
+              )}
               {isLoadingPrices ? (
-                <div className="flex h-64 items-center justify-center rounded-md bg-canvas/50">
-                  <div className="flex items-center gap-3 type-body-sm">
-                    <LoadingSpinner />
-                    주가 데이터를 불러오는 중...
-                  </div>
-                </div>
+                <Skeleton className="h-64 w-full" />
               ) : (
                 <StockPriceChart
                   data={priceHistory}
@@ -301,16 +309,11 @@ export default function Home() {
             </section>
 
             {/* Sky block — today intraday */}
-            <section className="color-block bg-canvas ring-1 ring-hairline">
+            <section className="data-card">
               <p className="type-eyebrow mb-4">Today Intraday</p>
               <h2 className="type-headline mb-8">오늘의 종목 그래프</h2>
               {isLoadingPrices ? (
-                <div className="flex h-56 items-center justify-center rounded-md bg-canvas/50">
-                  <div className="flex items-center gap-3 type-body-sm">
-                    <LoadingSpinner />
-                    장중 시세를 불러오는 중...
-                  </div>
-                </div>
+                <Skeleton className="h-56 w-full" />
               ) : (
                 <TodayIntradayChart
                   data={todayIntraday}
@@ -321,8 +324,8 @@ export default function Home() {
             </section>
 
             {/* Lilac color block — AI analysis */}
-            <section id="stock-analysis" className="color-block bg-block-lilac">
-              <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <section id="stock-analysis" className="data-card space-y-6">
+              <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="type-eyebrow mb-4">Gemini AI Report</p>
                   <h2 className="type-headline">주가 분석 리포트</h2>
@@ -339,53 +342,72 @@ export default function Home() {
                 )}
               </div>
 
-              {isLoadingAnalysis ? (
-                <GeminiLoadingCard />
+              {isLoadingAnalysis && !analysis ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-4/6" />
+                  <p className="type-body-sm text-ink/60">Gemini가 분석 중입니다…</p>
+                </div>
               ) : analysis ? (
                 <div className="space-y-3">
                   {analysisCached && (
-                    <p className="type-caption text-ink/60">
+                    <p className="type-caption normal-case text-ink/60">
                       저장된 분석 결과입니다 (API 호출 없음)
+                    </p>
+                  )}
+                  {analysisUpdatedAt && (
+                    <p className="type-caption normal-case text-ink/50">
+                      마지막 업데이트 {analysisUpdatedAt}
                     </p>
                   )}
                   <div className="max-w-3xl whitespace-pre-wrap type-body leading-relaxed">
                     {analysis}
                   </div>
+                  <p className="type-caption normal-case text-ink/50">
+                    본 내용은 AI 참고용이며 투자 권유가 아닙니다. 데이터: FinanceDataReader ·
+                    Google Gemini
+                  </p>
                 </div>
               ) : analysisError ? (
-                <div className="rounded-md border border-hairline bg-canvas p-6 type-body-sm leading-relaxed">
+                <div className="rounded-md border border-hairline bg-surface-soft p-6 type-body-sm leading-relaxed">
                   {analysisError}
                 </div>
               ) : (
                 <p className="type-body-sm max-w-xl text-ink/80">
                   종목 검색 후 <strong className="font-semibold">AI 분석 받기</strong> 버튼을
-                  누르면 Gemini가 주가 흐름과 전망을 요약합니다. 무료 API는 하루 약
-                  20회까지 사용 가능합니다.
+                  누르면 Gemini가 주가 흐름과 전망을 실시간으로 요약합니다.
                 </p>
               )}
+
+              <StockChatPanel
+                stockQuery={buildStockQuery(
+                  asText(activeCode || inputCode),
+                  asText(activeName || inputName),
+                )}
+                stockName={asText(activeName || inputName)}
+                disabled={priceHistory.length === 0}
+              />
             </section>
           </div>
 
           {/* Right column — coral block */}
           <aside className="lg:col-span-1">
-            <div id="recommendations" className="color-block sticky top-20 bg-block-coral lg:top-24">
-              <p className="type-eyebrow mb-4">Multi-Strategy Screen</p>
-              <h2 className="type-headline mb-2">
-                10대 투자기법
-                <br />
-                종목 추천
-              </h2>
-              <p className="type-caption mb-6 text-ink/60">
-                수급·모멘텀·골든크로스·돌파·RSI·MACD·추세·볼린저·상대강도·MA20
-              </p>
-
+            <Card id="recommendations" className="sticky top-20 border-hairline shadow-none lg:top-24">
+              <CardHeader>
+                <p className="type-eyebrow mb-2">Multi-Strategy Screen</p>
+                <CardTitle>10대 투자기법 종목 추천</CardTitle>
+                <p className="type-caption normal-case tracking-normal text-ink/60">
+                  수급·모멘텀·골든크로스·돌파·RSI·MACD·추세·볼린저·상대강도·MA20
+                </p>
+              </CardHeader>
+              <CardContent>
               {isLoadingRecommend ? (
-                <div className="flex flex-col items-center gap-4 py-12">
-                  <LoadingSpinner />
-                  <p className="type-body-sm text-center">
-                    시총 상위 120종목 · 10가지 기법 스크리닝 중...
-                  </p>
-                  <p className="type-caption text-ink/60">최대 2~4분 소요</p>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-24 w-full" />
+                  ))}
+                  <p className="type-caption normal-case text-ink/60">스크리닝 중 · 최대 2~4분</p>
                 </div>
               ) : recommendError ? (
                 <div className="rounded-md border border-hairline bg-canvas p-4 type-body-sm leading-relaxed">
@@ -459,10 +481,11 @@ export default function Home() {
                 </ul>
               )}
 
-              <p className="type-caption mt-8 border-t border-ink/10 pt-6 normal-case tracking-normal text-ink/50">
+              <p className="type-caption mt-8 border-t border-hairline pt-6 normal-case tracking-normal text-ink/50">
                 {recommendations.length}종목 · 기법별 스크리닝 · 투자 권유 아님
               </p>
-            </div>
+              </CardContent>
+            </Card>
           </aside>
         </div>
 

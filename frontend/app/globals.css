@@ -24,6 +24,9 @@
   --color-block-pink: #ffd6e8;
   --color-block-coral: #ffcab0;
   --color-block-navy: #2d2b55;
+  --color-positive: #14ae5c;
+  --color-negative: #e5484d;
+  --color-surface-elevated: #ffffff;
   --spacing-section: 96px;
   --spacing-xxl: 48px;
   --rounded-lg: 24px;
@@ -60,9 +63,31 @@ html {
   --color-block-pink: var(--color-block-pink);
   --color-block-coral: var(--color-block-coral);
   --color-block-navy: var(--color-block-navy);
+  --color-positive: var(--color-positive);
+  --color-negative: var(--color-negative);
+  --color-surface-elevated: var(--color-surface-elevated);
+  --color-positive: var(--color-positive);
+  --color-negative: var(--color-negative);
   --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
     "Noto Sans KR", system-ui, sans-serif;
   --font-mono: var(--font-sans);
+}
+
+.dark {
+  --color-primary: #ffffff;
+  --color-canvas: #0a0a0b;
+  --color-ink: #f5f5f5;
+  --color-on-primary: #0a0a0b;
+  --color-inverse-canvas: #f5f5f5;
+  --color-inverse-ink: #0a0a0b;
+  --color-surface-soft: #141416;
+  --color-hairline: #2a2a2e;
+  --color-hairline-soft: #1c1c1f;
+  --color-surface-elevated: #111113;
+  --color-block-lime: #1a2210;
+  --color-block-lilac: #1a1628;
+  --color-block-coral: #221610;
+  --color-block-navy: #12122a;
 }
 
 body {
@@ -197,6 +222,33 @@ body {
 .color-block {
   border-radius: var(--rounded-lg);
   padding: var(--spacing-xxl);
+}
+
+.data-card {
+  border-radius: var(--rounded-lg);
+  border: 1px solid var(--color-hairline);
+  background: var(--color-surface-elevated);
+  padding: var(--spacing-xxl);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.text-positive {
+  color: var(--color-positive);
+}
+
+.text-negative {
+  color: var(--color-negative);
+}
+
+.bg-positive\/15 {
+  background-color: color-mix(in srgb, var(--color-positive) 15%, transparent);
+}
+
+.bg-negative\/15 {
+  background-color: color-mix(in srgb, var(--color-negative) 15%, transparent);
 }
 
 .template-card {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { SectionNavCompact } from "@/components/section-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { API_BASE } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
@@ -71,6 +72,7 @@ export function TopNav() {
         </div>
         <SectionNavCompact />
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {user ? (
             <>
               <span className="type-caption hidden text-ink/70 sm:inline">

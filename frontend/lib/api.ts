@@ -145,10 +145,39 @@ export type MarketNewsItem = {
 
 export type MarketNewsResponse = {
   count: number;
+  region?: string;
   source: string;
   source_url: string;
   cached: boolean;
   items: MarketNewsItem[];
+};
+
+export type MarketQuote = {
+  symbol: string;
+  label: string;
+  value: number;
+  change: number;
+  change_pct: number;
+  date: string;
+  unit: string;
+};
+
+export type MarketOverviewResponse = {
+  updated_at: string;
+  cached: boolean;
+  quotes: MarketQuote[];
+};
+
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type WatchlistItem = {
+  id: string;
+  stock_code: string;
+  stock_name: string;
+  created_at: string;
 };
 
 export function buildStockQuery(code: string, name: string): string {
@@ -160,17 +189,115 @@ export function buildStockQuery(code: string, name: string): string {
   return "";
 }
 
+async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
+  if (accessTokenProvider) {
+    const token = await accessTokenProvider();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+async function consumeSseStream(
+  url: string,
+  onEvent: (data: Record<string, unknown>) => void,
+  timeoutMs = 90_000,
+): Promise<void> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const headers = await authHeaders();
+
+  try {
+    const res = await fetch(url, { headers, signal: controller.signal });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(
+        typeof body?.detail === "string" ? body.detail : `요청 실패 (${res.status})`,
+      );
+    }
+    if (!res.body) throw new Error("스트림 응답이 비어 있습니다.");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+      for (const part of parts) {
+        const line = part
+          .split("\n")
+          .find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        const payload = line.slice(6);
+        if (payload === "[DONE]") return;
+        onEvent(JSON.parse(payload) as Record<string, unknown>);
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function postSseStream(
+  url: string,
+  body: unknown,
+  onEvent: (data: Record<string, unknown>) => void,
+  timeoutMs = 90_000,
+): Promise<void> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const headers = {
+    "Content-Type": "application/json",
+    ...(await authHeaders()),
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => null);
+      throw new Error(
+        typeof errBody?.detail === "string" ? errBody.detail : `요청 실패 (${res.status})`,
+      );
+    }
+    if (!res.body) throw new Error("스트림 응답이 비어 있습니다.");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() ?? "";
+      for (const part of parts) {
+        const line = part.split("\n").find((l) => l.startsWith("data: "));
+        if (!line) continue;
+        const payload = line.slice(6);
+        if (payload === "[DONE]") return;
+        onEvent(JSON.parse(payload) as Record<string, unknown>);
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchJson<T>(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  const headers: Record<string, string> = {};
-  if (accessTokenProvider) {
-    const token = await accessTokenProvider();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  }
+  const headers = await authHeaders();
 
   try {
     const res = await fetch(url, { signal: controller.signal, headers });
@@ -217,8 +344,67 @@ function stockQueryUrl(query: string, mode: "prices" | "analysis" | "full" = "fu
   return `${API_BASE}/api/stock/${encoded}`;
 }
 
-export async function fetchMarketNews(limit = 8): Promise<MarketNewsResponse> {
-  return fetchJson(`${API_BASE}/api/news/market?limit=${limit}`, 20_000);
+export async function fetchMarketOverview(): Promise<MarketOverviewResponse> {
+  return fetchJson(`${API_BASE}/api/market/overview`, 20_000);
+}
+
+export async function fetchMarketNews(
+  limit = 8,
+  region: "domestic" | "global" = "domestic",
+): Promise<MarketNewsResponse> {
+  return fetchJson(
+    `${API_BASE}/api/news/market?limit=${limit}&region=${region}`,
+    20_000,
+  );
+}
+
+export async function streamStockAnalysis(
+  stockQuery: string,
+  handlers: {
+    onMeta?: (meta: { stock_code?: string; stock_name?: string }) => void;
+    onChunk: (text: string) => void;
+    onCached?: () => void;
+    onError?: (message: string) => void;
+  },
+): Promise<void> {
+  const encoded = encodeURIComponent(stockQuery.trim());
+  await consumeSseStream(
+    `${API_BASE}/api/stock/analysis/stream?q=${encoded}`,
+    (data) => {
+      if (typeof data.error === "string") {
+        handlers.onError?.(data.error);
+        return;
+      }
+      if (data.meta && typeof data.meta === "object") {
+        handlers.onMeta?.(data.meta as { stock_code?: string; stock_name?: string });
+      }
+      if (data.cached) handlers.onCached?.();
+      if (typeof data.text === "string") handlers.onChunk(data.text);
+    },
+    90_000,
+  );
+}
+
+export async function streamStockChat(
+  stockQuery: string,
+  messages: ChatMessage[],
+  handlers: {
+    onChunk: (text: string) => void;
+    onError?: (message: string) => void;
+  },
+): Promise<void> {
+  await postSseStream(
+    `${API_BASE}/api/stock/chat`,
+    { stock_query: stockQuery, messages },
+    (data) => {
+      if (typeof data.error === "string") {
+        handlers.onError?.(data.error);
+        return;
+      }
+      if (typeof data.text === "string") handlers.onChunk(data.text);
+    },
+    90_000,
+  );
 }
 
 export async function fetchStockSuggestions(
