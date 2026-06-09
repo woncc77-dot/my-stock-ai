@@ -26,6 +26,8 @@ from html import unescape
 import json
 import re
 import ssl
+import threading
+import time
 from typing import Any
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -57,14 +59,14 @@ ALLOWED_PRICE_PERIODS = {30, 90, 180, 365}
 FUNDAMENTALS_CACHE_MINUTES = 30
 
 # 추천 종목 스크리닝 설정
-TOP_MARCAP_COUNT = 120       # 시가총액 상위 N개 종목 스크리닝
+TOP_MARCAP_COUNT = 80        # 시가총액 상위 N개 종목 스크리닝 (응답 속도 위해 축소)
 MAX_RECOMMENDATIONS = 10     # 투자 기법별 추천 종목 수
 VOLUME_SURGE_RATIO = 2.0     # 거래량 급증 기준 (200%)
 RECENT_VOLUME_DAYS = 3
 BASELINE_VOLUME_DAYS = 20
 MIN_TRADING_DAYS = RECENT_VOLUME_DAYS + BASELINE_VOLUME_DAYS
 RECOMMEND_HISTORY_DAYS = 60  # 기술적 지표 계산용 조회 일수
-RECOMMEND_CACHE_MINUTES = 15
+RECOMMEND_CACHE_MINUTES = 60  # 백그라운드 워머가 갱신하므로 길게 유지
 NEWS_CACHE_MINUTES = 15
 OVERVIEW_CACHE_MINUTES = 5
 NAVER_FINANCE_BASE = "https://finance.naver.com"
@@ -161,13 +163,38 @@ app.add_middleware(
 )
 
 
+# 무거운 엔드포인트(추천/시장지수/테마/뉴스)의 캐시를 미리 채워, 사용자 첫 요청이
+# 스크래핑·스크리닝을 기다리지 않고 즉시 캐시 응답을 받도록 하는 워밍 주기(초).
+CACHE_WARM_INTERVAL_SECONDS = 10 * 60
+
+
+def _warm_all_caches() -> None:
+    """무거운 응답 캐시들을 미리 채웁니다. 개별 실패는 무시합니다."""
+    warmers: tuple[tuple[str, Any], ...] = (
+        ("krx_listing", _get_krx_listing),
+        ("recommend", _find_expert_recommendations),
+        ("market_overview", _fetch_market_overview),
+        ("themes", lambda: _fetch_stock_themes(12)),
+        ("market_news", lambda: _fetch_market_news(8)),
+    )
+    for _name, fn in warmers:
+        try:
+            fn()
+        except Exception:
+            # 워밍 실패는 무시 (다음 주기에 재시도)
+            continue
+
+
 @app.on_event("startup")
-def _warm_krx_listing_cache() -> None:
-    """자동완성·종목명 검색 첫 요청 지연을 줄이기 위해 목록을 미리 로드합니다."""
-    try:
-        _get_krx_listing()
-    except HTTPException:
-        pass
+def _start_cache_warmer() -> None:
+    """시작 직후 1회 + 주기적으로 캐시를 데몬 스레드에서 워밍합니다."""
+
+    def loop() -> None:
+        while True:
+            _warm_all_caches()
+            time.sleep(CACHE_WARM_INTERVAL_SECONDS)
+
+    threading.Thread(target=loop, name="cache-warmer", daemon=True).start()
 
 
 def _clean_api_key(raw: str) -> str:

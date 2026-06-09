@@ -1,0 +1,24 @@
+name: keep-alive
+
+# Render 무료 인스턴스가 잠들지 않도록 백엔드 헬스 엔드포인트를 주기적으로 호출합니다.
+# 주의: GitHub 예약 워크플로는 지연/비활성될 수 있어, 가능하면 cron-job.org 등 외부 모니터를 함께 사용하세요.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *" # 매 10분
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://my-stock-ai-api.onrender.com/ || true)
+            echo "attempt $i -> HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "health check did not return 200 after retries"
+          exit 0

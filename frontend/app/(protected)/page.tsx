@@ -2,8 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import dynamic from "next/dynamic";
+
 import { MarketNewsStrip } from "@/components/market-news-strip";
-import { ThemeBoard } from "@/components/theme-board";
+import { LazyMount } from "@/components/lazy-mount";
 import { MarketOverviewBar } from "@/components/market-overview-bar";
 import { MarqueeStrip } from "@/components/marquee-strip";
 import { SiteFooter } from "@/components/site-footer";
@@ -29,6 +31,14 @@ import {
   type TodayIntraday,
   type TodayQuote,
 } from "@/lib/api";
+
+const ThemeBoard = dynamic(
+  () => import("@/components/theme-board").then((m) => m.ThemeBoard),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-64 w-full" />,
+  },
+);
 
 type PriceStats = {
   period_high?: number | null;
@@ -560,7 +570,9 @@ export default function Home() {
           <p className="type-body-sm mb-6 text-ink/60">
             오늘 강세를 보이는 테마와 주도주를 확인하세요.
           </p>
-          <ThemeBoard onSelect={handleStockPick} />
+          <LazyMount placeholder={<Skeleton className="h-64 w-full" />}>
+            <ThemeBoard onSelect={handleStockPick} />
+          </LazyMount>
         </section>
 
         {/* Navy promo block */}

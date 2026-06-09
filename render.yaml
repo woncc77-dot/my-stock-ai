@@ -2,6 +2,9 @@ services:
   - type: web
     name: my-stock-ai-api
     runtime: python
+    # 한국 사용자 기준 왕복 지연을 줄이기 위해 싱가포르 리전 사용.
+    # (기존 서비스의 리전 변경은 재생성이 필요할 수 있음)
+    region: singapore
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
